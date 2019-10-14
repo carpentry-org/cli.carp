@@ -1,0 +1,9 @@
+(load "cli.carp")
+
+(defn main []
+  (let [p (=> (CLI.new @"My super cool tool!")
+              (CLI.add &(CLI.option "--flag" "-f" "my flag" true))
+              (CLI.add &(CLI.option "--thing" "-t" "my thing" false @"hi" [@"a" @"b" @"hi"])))]
+    (match (CLI.parse &p)
+      (Result.Success p) (IO.println &(str &(CLI.get &p "--flag")))
+      (Result.Error msg) (do (IO.errorln &msg) (CLI.usage &p)))))
