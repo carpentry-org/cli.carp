@@ -3,21 +3,25 @@
 A simple CLI library for Carp.
 
 ```clojure
-(load "git@github.com:carpentry-org/cli.carp.git@master")
+(load "https://veitheller.de/git/carpentry/cli@master")
 
 (defn main []
   (let [p (=> (CLI.new @"My super cool tool!")
-              (CLI.add &(CLI.option "--flag" "-f" "my flag" true)))]
+              (CLI.add &(CLI.int "flag" "f" "my flag" true))
+              (CLI.add &(CLI.str "thing" "t" "my thing" false @"hi" &[@"a" @"b" @"hi"])))]
     (match (CLI.parse &p)
-      (Result.Success p) (IO.println &(str &(CLI.get &p "flag")))
+      (Result.Success flags)
+        (println* &(str &(Map.get &flags "flag")) " " &(str &(Map.get &flags "thing")))
       (Result.Error msg) (do (IO.errorln &msg) (CLI.usage &p)))))
 ```
 
 ## Installation
 
 ```clojure
-(load "git@github.com:carpentry-org/cli.carp.git@master")
+(load "https://veitheller.de/git/carpentry/cli@master")
 ```
+
+## Usage
 
 <hr/>
 
