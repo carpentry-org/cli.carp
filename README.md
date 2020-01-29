@@ -23,6 +23,29 @@ A simple CLI library for Carp.
 
 ## Usage
 
+`CLI` should be built using combinators, as in the example above. It has, as of
+now, three option types: integrals (longs), floating point numbers (doubles),
+and strings. They can be built using `CLI.int`, `CLI.float`, and `CLI.str`,
+respectively. Their structure is always the same:
+
+```clojure
+(CLI.int <long> <short> <description> <required?>)
+; or
+(CLI.int <long> <short> <description> <required?> <default>)
+; or
+(CLI.int <long> <short> <description> <required?> <default> <options-array>)
+```
+
+You’ll have to set a default if you want to specify options, although you can
+set it to `(Maybe.Nothing)` if you want to make sure that it has to be set
+manually.
+
+Once you’re done building your flag structure, you can run `CLI.parse`. It
+will not abort the program on error, instead it will tell you what went wrong
+in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
+the long flag name to the value (the values are `Maybe`s, since they might be
+optional arguments.
+
 <hr/>
 
 Have fun!

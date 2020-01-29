@@ -1,0 +1,258 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo">
+                <a href="http://github.com/carp-lang/Carp">
+                    <img src="logo.png">
+                </a>
+                <div class="title">
+                    cli
+                </div>
+                <div class="index">
+                    <ul>
+                        <li>
+                            <a href="CLI.html">
+                                CLI
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <h1>
+                CLI
+            </h1>
+            <div class="module-description">
+                <p>is a simple CLI library for Carp.</p>
+<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.1&quot;)
+
+(defn main []
+  (let [p (=&gt; (CLI.new @&quot;My super cool tool!&quot;)
+              (CLI.add &amp;(CLI.int &quot;flag&quot; &quot;f&quot; &quot;my flag&quot; true))
+              (CLI.add &amp;(CLI.str &quot;thing&quot; &quot;t&quot; &quot;my thing&quot; false @&quot;hi&quot; &amp;[@&quot;a&quot; @&quot;b&quot; @&quot;hi&quot;])))]
+    (match (CLI.parse &amp;p)
+      (Result.Success flags)
+        (println* &amp;(str &amp;(Map.get &amp;flags &quot;flag&quot;)) &quot; &quot; &amp;(str &amp;(Map.get &amp;flags &quot;thing&quot;)))
+      (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
+</code></pre>
+<h2>Installation</h2>
+<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.1&quot;)
+</code></pre>
+<h2>Usage</h2>
+<p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
+now, three option types: integrals (longs), floating point numbers (doubles),
+and strings. They can be built using <code>CLI.int</code>, <code>CLI.float</code>, and <code>CLI.str</code>,
+respectively. Their structure is always the same:</p>
+<pre><code class="language-clojure">(CLI.int &lt;long&gt; &lt;short&gt; &lt;description&gt; &lt;required?&gt;)
+; or
+(CLI.int &lt;long&gt; &lt;short&gt; &lt;description&gt; &lt;required?&gt; &lt;default&gt;)
+; or
+(CLI.int &lt;long&gt; &lt;short&gt; &lt;description&gt; &lt;required?&gt; &lt;default&gt; &lt;options-array&gt;)
+</code></pre>
+<p>You’ll have to set a default if you want to specify options, although you can
+set it to <code>(Maybe.Nothing)</code> if you want to make sure that it has to be set
+manually.</p>
+<p>Once you’re done building your flag structure, you can run <code>CLI.parse</code>. It
+will not abort the program on error, instead it will tell you what went wrong
+in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> contains a <code>Map</code> from
+the long flag name to the value (the values are <code>Maybe</code>s, since they might be
+optional arguments.</p>
+
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#Option">
+                    <h3 id="Option">
+                        Option
+                    </h3>
+                </a>
+                <div class="description">
+                    module
+                </div>
+                <p class="sig">
+                    Module
+                </p>
+                <span>
+                    
+                </span>
+                <p class="doc">
+                    <p>is the option type. To construct an <code>Option</code>, please use
+<a href="#int"><code>int</code></a>, <a href="#float"><code>float</code></a>, or <a href="#str">`str</a>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#Parser">
+                    <h3 id="Parser">
+                        Parser
+                    </h3>
+                </a>
+                <div class="description">
+                    module
+                </div>
+                <p class="sig">
+                    Module
+                </p>
+                <span>
+                    
+                </span>
+                <p class="doc">
+                    <p>is the parser type. To construct a <code>Parser</code>, please use
+<a href="#new">`new</a>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#add">
+                    <h3 id="add">
+                        add
+                    </h3>
+                </a>
+                <div class="description">
+                    defn
+                </div>
+                <p class="sig">
+                    (λ [Parser, (Ref Option)] Parser)
+                </p>
+                <pre class="args">
+                    (add p opt)
+                </pre>
+                <p class="doc">
+                    <p>adds an <code>Option</code> <code>opt</code> to the <code>Parser</code> <code>p</code>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#float">
+                    <h3 id="float">
+                        float
+                    </h3>
+                </a>
+                <div class="description">
+                    macro
+                </div>
+                <p class="sig">
+                    Macro
+                </p>
+                <pre class="args">
+                    (float long short description required :rest default-options)
+                </pre>
+                <p class="doc">
+                    <p>creates a integer option. The actual type is a <code>Double</code>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#int">
+                    <h3 id="int">
+                        int
+                    </h3>
+                </a>
+                <div class="description">
+                    macro
+                </div>
+                <p class="sig">
+                    Macro
+                </p>
+                <pre class="args">
+                    (int long short description required :rest default-options)
+                </pre>
+                <p class="doc">
+                    <p>creates a integer option. The actual type is a <code>Long</code>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#new">
+                    <h3 id="new">
+                        new
+                    </h3>
+                </a>
+                <div class="description">
+                    defn
+                </div>
+                <p class="sig">
+                    (λ [String] Parser)
+                </p>
+                <pre class="args">
+                    (new descr)
+                </pre>
+                <p class="doc">
+                    <p>creates a new <code>Parser</code> with a program description <code>descr</code>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#parse">
+                    <h3 id="parse">
+                        parse
+                    </h3>
+                </a>
+                <div class="description">
+                    defn
+                </div>
+                <p class="sig">
+                    (λ [(Ref Parser)] (Result (Map String (Maybe Type)) String))
+                </p>
+                <pre class="args">
+                    (parse p)
+                </pre>
+                <p class="doc">
+                    <p>parses the arguments as specified by the parser <code>p</code>.</p>
+<p>If everything goes right, it will return a <code>Success</code> containing a map from
+the long arguments to their values. Because values can be optional, they are
+returned as <code>Maybe</code>.</p>
+<p>Otherwise it will return an <code>Error</code> containing an error message. If that error
+mesage is empty, <code>--help</code> was requested. If you don’t want to provide a
+<code>--help</code> feature, you can override that flag.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#str">
+                    <h3 id="str">
+                        str
+                    </h3>
+                </a>
+                <div class="description">
+                    macro
+                </div>
+                <p class="sig">
+                    Macro
+                </p>
+                <pre class="args">
+                    (str long short description required :rest default-options)
+                </pre>
+                <p class="doc">
+                    <p>creates a string option.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#usage">
+                    <h3 id="usage">
+                        usage
+                    </h3>
+                </a>
+                <div class="description">
+                    defn
+                </div>
+                <p class="sig">
+                    (λ [(Ref Parser)] ())
+                </p>
+                <pre class="args">
+                    (usage p)
+                </pre>
+                <p class="doc">
+                    <p>takes a <code>Parser</code> <code>p</code> and prints its usage information.</p>
+
+                </p>
+            </div>
+        </div>
+    </body>
+</html>

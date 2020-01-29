@@ -1,8 +1,56 @@
+; TODO: this is temporary until we have this in the stdlib
 (defmodule Maybe
   (defn zero [] (Maybe.Nothing))
 )
 
+(doc CLI "is a simple CLI library for Carp.
+
+```clojure
+(load \"https://veitheller.de/git/carpentry/cli@0.0.1\")
+
+(defn main []
+  (let [p (=> (CLI.new @\"My super cool tool!\")
+              (CLI.add &(CLI.int \"flag\" \"f\" \"my flag\" true))
+              (CLI.add &(CLI.str \"thing\" \"t\" \"my thing\" false @\"hi\" &[@\"a\" @\"b\" @\"hi\"])))]
+    (match (CLI.parse &p)
+      (Result.Success flags)
+        (println* &(str &(Map.get &flags \"flag\")) \" \" &(str &(Map.get &flags \"thing\")))
+      (Result.Error msg) (do (IO.errorln &msg) (CLI.usage &p)))))
+```
+
+## Installation
+
+```clojure
+(load \"https://veitheller.de/git/carpentry/cli@0.0.1\")
+```
+
+## Usage
+
+`CLI` should be built using combinators, as in the example above. It has, as of
+now, three option types: integrals (longs), floating point numbers (doubles),
+and strings. They can be built using `CLI.int`, `CLI.float`, and `CLI.str`,
+respectively. Their structure is always the same:
+
+```clojure
+(CLI.int <long> <short> <description> <required?>)
+; or
+(CLI.int <long> <short> <description> <required?> <default>)
+; or
+(CLI.int <long> <short> <description> <required?> <default> <options-array>)
+```
+
+You’ll have to set a default if you want to specify options, although you can
+set it to `(Maybe.Nothing)` if you want to make sure that it has to be set
+manually.
+
+Once you’re done building your flag structure, you can run `CLI.parse`. It
+will not abort the program on error, instead it will tell you what went wrong
+in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
+the long flag name to the value (the values are `Maybe`s, since they might be
+optional arguments.")
 (defmodule CLI
+  (hidden Type)
+  (private Type)
   (deftype Type
     (Integer [Long])
     (Floating [Double])
@@ -32,6 +80,8 @@
         (Str s2) (String.format s &s2)))
   )
 
+  (hidden Tag)
+  (private Tag)
   (deftype Tag
     (Integer [])
     (Floating [])
@@ -46,6 +96,8 @@
         (Str) (CLI.Type.Str @s)))
   )
 
+  (doc Option "is the option type. To construct an `Option`, please use
+[`int`](#int), [`float`](#float), or [`str](#str).")
   (deftype Option [
     type- Tag
     long String
@@ -56,11 +108,18 @@
     options (Maybe (Array Type))
   ])
 
+  (doc Parser "is the parser type. To construct a `Parser`, please use
+[`new](#new).")
   (deftype Parser [
     description String
     options (Array Option)
   ])
 
+  (private CmdMap)
+  (hidden CmdMap)
+  ; this is pretty brutal. It’s a (Pair (Pair <long> <short>) (<tag> <value>))
+  ; we need to make our own map because long or short might match and both are
+  ; equivalent. This means a lot of manual work. Sorry about that.
   (deftype CmdMap [
     values (Array (Pair (Pair String String) (Pair Tag (Maybe Type))))
   ])
@@ -148,11 +207,15 @@
       (Array.reduce &CLI.CmdMap.put-empty (CLI.CmdMap.new) (options p)))
   )
 
+  (doc new "creates a new `Parser` with a program description `descr`.")
   (defn new [descr] (Parser.init descr []))
 
+  (doc add "adds an `Option` `opt` to the `Parser` `p`.")
   (defn add [p opt]
     (Parser.update-options p &(fn [options] (Array.push-back options @opt))))
 
+  (hidden option-)
+  (private option-)
   (defndynamic option- [t long short description required default-options]
     (if (= (length default-options) 0)
       (list 'CLI.Option.init (list t)
@@ -168,18 +231,20 @@
           (list 'Maybe.Just
             (list 'Array.copy-map '(ref (fn [e] (to-cli-type @e))) (cadr default-options)))))))
 
-  (defmacro option [long short description required :rest default-options]
-    (CLI.option- t long short description required default-options))
-
+  (doc str "creates a string option.")
   (defmacro str [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Str long short description required default-options))
 
+  (doc int "creates a integer option. The actual type is a `Long`.")
   (defmacro int [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Integer long short description required default-options))
 
+  (doc float "creates a integer option. The actual type is a `Double`.")
   (defmacro float [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Floating long short description required default-options))
 
+  (private options-str)
+  (hidden options-str)
   (defn options-str [p]
     (join
       " "
@@ -187,6 +252,7 @@
         &(fn [o] (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
         (Parser.options p))))
 
+  (doc usage "takes a `Parser` `p` and prints its usage information.")
   (defn usage [p]
     (do
       (IO.println
@@ -207,6 +273,15 @@
           (IO.println "")))
       (IO.println "  --help|-h: print this help message and exit.")))
 
+  (doc parse "parses the arguments as specified by the parser `p`.
+
+If everything goes right, it will return a `Success` containing a map from
+the long arguments to their values. Because values can be optional, they are
+returned as `Maybe`.
+
+Otherwise it will return an `Error` containing an error message. If that error
+mesage is empty, `--help` was requested. If you don’t want to provide a
+`--help` feature, you can override that flag.")
   (defn parse [p]
     (let-do [values (Parser.values p)
              res (Result.Success @p)
@@ -226,8 +301,8 @@
                         (break))))
                 (or (= &flag "help") (= &flag "h"))
                   (do
-                    (usage p)
-                    (System.exit 0))
+                    (set! res (Result.Error @""))
+                    (break))
                 (do
                   (set! res (Result.Error (fmt "Unknown option: %s" x)))
                   (break))))
