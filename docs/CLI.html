@@ -30,7 +30,7 @@
             </h1>
             <div class="module-description">
                 <p>is a simple CLI library for Carp.</p>
-<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.1&quot;)
+<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.2&quot;)
 
 (defn main []
   (let [p (=&gt; (CLI.new @&quot;My super cool tool!&quot;)
@@ -42,7 +42,7 @@
       (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
 </code></pre>
 <h2>Installation</h2>
-<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.1&quot;)
+<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.2&quot;)
 </code></pre>
 <h2>Usage</h2>
 <p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
