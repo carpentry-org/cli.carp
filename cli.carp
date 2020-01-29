@@ -1,9 +1,13 @@
+(defmodule Maybe
+  (defn zero [] (Maybe.Nothing))
+)
+
 (defmodule CLI
   (deftype Option [
     long String
     short String
     description String
-    required Bool
+    required? Bool
     default (Maybe String)
     options (Maybe (Array String))
   ])
@@ -11,15 +15,97 @@
   (deftype Parser [
     description String
     options (Array Option)
-    values (Map String (Maybe String))
   ])
 
-  (defn new [descr] (Parser.init descr [] {}))
+  (deftype CmdMap [
+    values (Array (Pair (Pair String String) (Maybe String)))
+  ])
+
+  (defmodule CmdMap
+    (defn new [] (init []))
+
+    (defn put [m o v]
+      (update-values m
+        &(fn [vs]
+          (Array.push-back vs
+            (Pair.init
+              (Pair.init @(CLI.Option.long o) @(CLI.Option.short o))
+              @v)))))
+
+    (defn put-empty [m o] (put m o (CLI.Option.default o)))
+
+    (defn contains? [m s]
+      (let-do [found false]
+        (foreach [e (values m)]
+          (let [k (Pair.a e)]
+            (when (or (= (Pair.a k) s) (= (Pair.b k) s))
+              (do
+                (set! found true)
+                (break)))))
+        found))
+
+    (defn set? [m s]
+      (let-do [found false]
+        (foreach [e (values m)]
+          (let [k (Pair.a e)
+                v (Pair.b e)]
+            (when (or (= (Pair.a k) s) (= (Pair.b k) s))
+              (do
+                (set! found (Maybe.just? v))
+                (break)))))
+        found))
+
+    (defn get [m s]
+      (let-do [res @""]
+        (foreach [e (values m)]
+          (let [k (Pair.a e)
+                v (Pair.b e)]
+            (when (or (= (Pair.a k) s) (= (Pair.b k) s))
+              (do
+                (set! res (Maybe.unsafe-from @v))
+                (break)))))
+        res))
+
+    (defn in? [m s vs]
+      (let-do [found true]
+        (foreach [e (values m)]
+          (let [k (Pair.a e)
+                v (Pair.b e)]
+            (when (or (= (Pair.a k) s) (= (Pair.b k) s))
+              (match @v
+                (Maybe.Just value)
+                  (do
+                    (set! found (Array.contains? vs &value))
+                    (break))
+                (Maybe.Nothing) (break)))))
+        found))
+
+    (defn put! [m s v]
+      (let [vs (values m)]
+        (for [i 0 (Array.length vs)]
+          (let [p (Array.unsafe-nth vs i)
+                k (Pair.a p)]
+            (when (or (= (Pair.a k) s) (= (Pair.b k) s))
+              (do
+                (Pair.set-b! p (Maybe.Just @v))
+                (break)))))))
+
+    (defn to-map [m]
+      (Array.reduce
+        &(fn [a v] (Map.put a (Pair.a (Pair.a v)) (Pair.b v)))
+        {}
+        (values m)))
+  )
+
+  (defmodule Parser
+    (defn values [p]
+      (Array.reduce &CLI.CmdMap.put-empty (CLI.CmdMap.new) (options p)))
+  )
+
+  (defn new [descr] (Parser.init descr []))
 
   (defn add [p opt]
-    (Parser.update-values
-      (Parser.update-options p &(fn [options] (Array.push-back options @opt)))
-      &(fn [values] (Map.put values (Option.long opt) &(Maybe.Nothing)))))
+    (Parser.update-options p &(fn [options] (Array.push-back options @opt))))
 
   (defndynamic option- [long short description required default-options]
     (if (= (length default-options) 0)
@@ -39,58 +125,80 @@
     (CLI.option- long short description required default-options))
 
   (defn options-str [p]
-    (String.join
-      "|"
+    (join
+      " "
       &(Array.copy-map
-        &(fn [o] (fmt "%s|%s" (Option.short o) (Option.long o)))
+        &(fn [o] (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
         (Parser.options p))))
 
   (defn usage [p]
     (do
       (IO.println
-        &(fmt "usage: %s [%s]\n%s\nOptions:"
+        &(fmt "usage: %s %s\n%s\nOptions:"
               (System.get-arg 0) &(options-str p) (Parser.description p)))
       (foreach [arg (Parser.options p)]
         (do
           (IO.print
-            &(fmt "  %s|%s: %s"
+            &(fmt "  --%s|-%s: %s"
                   (Option.long arg) (Option.short arg) (Option.description arg)))
-          (when @(Option.required arg) (IO.print " REQUIRED"))
+          (when @(Option.required? arg) (IO.print " REQUIRED"))
           (when (Maybe.just? (Option.default arg))
             (IO.print &(fmt " (default: %s)" &(Maybe.unsafe-from @(Option.default arg)))))
-          (when (Maybe.just? (Option.options arg))
-            (IO.print &(fmt " (options: %s)" &(String.join ", " &(Maybe.unsafe-from @(Option.options arg))))))
+          (match @(Option.options arg)
+            (Maybe.Just o)
+              (IO.print &(fmt " (options: %s)" &(join ", " &o)))
+            (Maybe.Nothing) ())
           (IO.println "")))
       (IO.println "  --help|-h: print this help message and exit.")))
 
   (defn parse [p]
     (let-do [values (Parser.values p)
-             res (Result.Success @p)]
+             res (Result.Success @p)
+             options (Parser.options p)]
       (for [i 1 (System.get-args-len)]
         (let [x (System.get-arg i)]
-          (if (Map.contains? values x)
-            (do
-              (set! i (Int.inc i))
-              (if (< i (System.get-args-len))
-                (Map.put! values x &(Maybe.Just @(System.get-arg i)))
+          (if (or (String.starts-with? x "--") (String.starts-with? x "-"))
+            (let [flag (Pattern.substitute #"^\-\-?" x "" 1)]
+              (cond
+                (CmdMap.contains? &values &flag)
+                  (do
+                    (set! i (Int.inc i))
+                    (if (< i (System.get-args-len))
+                      (CmdMap.put! &values &flag (System.get-arg i))
+                      (do
+                        (set! res (Result.Error (fmt "No value for: %s" &flag)))
+                        (break))))
+                (or (= &flag "help") (= &flag "h"))
+                  (do
+                    (usage p)
+                    (System.exit 0))
                 (do
-                  (set! res (Result.Error (fmt "No value for: %s" x)))
+                  (set! res (Result.Error (fmt "Unknown option: %s" x)))
                   (break))))
-            (if (or (= x "--help") (= x "-h"))
-              (do
-                (usage p)
-                (System.exit 0))
-              (do
-                (set! res (Result.Error (fmt "Unknown option: %s" x)))
-                (break))))))
+            (do
+              (set! res (Result.Error (fmt "Unexpected argument: %s" x)))
+              (break)))))
+      (foreach [o options]
+        (cond
+          (and @(Option.required? o)
+               (not (CmdMap.set? &values (Option.long o))))
+            (do
+              (set! res (Result.Error (fmt "Required option missing: --%s" (Option.long o))))
+              (break))
+          (Maybe.just? (Option.options o))
+            (let-do [opts (Maybe.unsafe-from @(Option.options o))]
+              (when (not (CmdMap.in? &values (Option.long o) &opts))
+                (do
+                  (set! res
+                    (Result.Error
+                      (fmt
+                        "Option %s received an invalid option %s (Options are %s)"
+                        (Option.long o)
+                        &(CmdMap.get &values (Option.long o))
+                        &(join ", " &opts))))
+                  (break))))
+          ()))
       (match res
-        (Result.Success _) (Result.Success @p)
+        (Result.Success _) (Result.Success (CmdMap.to-map &values))
         (Result.Error x) (Result.Error x))))
-
-  (defn values [p]
-    @(Parser.values p))
-
-  (defn get [p k]
-    (let [m (values p)]
-      (Map.get-with-default &m k &(Maybe.Nothing))))
 )
