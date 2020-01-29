@@ -103,7 +103,7 @@ optional arguments.")
   )
 
   (doc Option "is the option type. To construct an `Option`, please use
-[`int`](#int), [`float`](#float), or [`str](#str).")
+[`int`](#int), [`float`](#float), or [`str`](#str).")
   (deftype Option [
     type- Tag
     long String
@@ -115,7 +115,7 @@ optional arguments.")
   ])
 
   (doc Parser "is the parser type. To construct a `Parser`, please use
-[`new](#new).")
+[`new`](#new).")
   (deftype Parser [
     description String
     options (Array Option)
