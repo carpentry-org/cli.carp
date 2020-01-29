@@ -78,6 +78,12 @@ optional arguments.")
         (Integer i) (Long.format s i)
         (Floating f) (Double.format s f)
         (Str s2) (String.format s &s2)))
+
+    (defn str [t]
+      (match @t
+        (Integer i) (str i)
+        (Floating f) (str f)
+        (Str s) (str s)))
   )
 
   (hidden Tag)
@@ -309,26 +315,27 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
             (do
               (set! res (Result.Error (fmt "Unexpected argument: %s" x)))
               (break)))))
-      (foreach [o options]
-        (cond
-          (and @(Option.required? o)
-               (not (CmdMap.set? &values (Option.long o))))
-            (do
-              (set! res (Result.Error (fmt "Required option missing: --%s" (Option.long o))))
-              (break))
-          (Maybe.just? (Option.options o))
-            (let-do [opts (Maybe.unsafe-from @(Option.options o))]
-              (when (not (CmdMap.in? &values (Option.long o) &opts))
-                (do
-                  (set! res
-                    (Result.Error
-                      (fmt
-                        "Option %s received an invalid option %s (Options are %s)"
-                        (Option.long o)
-                        &(CmdMap.get &values (Option.long o))
-                        &(join ", " &(Array.copy-map &str &opts)))))
-                  (break))))
-          ()))
+      (when (Result.success? &res)
+        (foreach [o options]
+          (cond
+            (and @(Option.required? o)
+                 (not (CmdMap.set? &values (Option.long o))))
+              (do
+                (set! res (Result.Error (fmt "Required option missing: --%s" (Option.long o))))
+                (break))
+            (Maybe.just? (Option.options o))
+              (let-do [opts (Maybe.unsafe-from @(Option.options o))]
+                (when (not (CmdMap.in? &values (Option.long o) &opts))
+                  (do
+                    (set! res
+                      (Result.Error
+                        (fmt
+                          "Option %s received an invalid option %s (Options are %s)"
+                          (Option.long o)
+                          &(CmdMap.get &values (Option.long o))
+                          &(join ", " &(Array.copy-map &str &opts)))))
+                    (break))))
+            ())))
       (match res
         (Result.Success _) (Result.Success (CmdMap.to-map &values))
         (Result.Error x) (Result.Error x))))
