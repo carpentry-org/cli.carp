@@ -84,6 +84,31 @@ optional arguments.")
         (Integer i) (str i)
         (Floating f) (str f)
         (Str s) (str s)))
+
+    (defn to-int [x]
+      (match x
+        (Integer l) (Long.to-int l)
+        _ 0))
+
+    (defn to-long [x]
+      (match x
+        (Integer l) l
+        _ 0l))
+
+    (defn to-str [x]
+      (match x
+        (Str s) s
+        _ @""))
+
+    (defn to-float [x]
+      (match x
+        (Floating d) (Double.to-float d)
+        _ 0.0f))
+
+    (defn to-double [x]
+      (match x
+        (Floating d) d
+        _ 0.0))
   )
 
   (hidden Tag)
