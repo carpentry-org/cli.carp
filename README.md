@@ -3,7 +3,7 @@
 A simple CLI library for Carp.
 
 ```clojure
-(load "https://veitheller.de/git/carpentry/cli@0.0.2")
+(load "https://veitheller.de/git/carpentry/cli@0.0.5")
 
 (defn main []
   (let [p (=> (CLI.new @"My super cool tool!")
@@ -18,7 +18,7 @@ A simple CLI library for Carp.
 ## Installation
 
 ```clojure
-(load "https://veitheller.de/git/carpentry/cli@0.0.2")
+(load "https://veitheller.de/git/carpentry/cli@0.0.5")
 ```
 
 ## Usage
@@ -43,8 +43,8 @@ manually.
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
 in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
-the long flag name to the value (the values are `Maybe`s, since they might be
-optional arguments.
+the long flag name to the value. The values are not in the map if they are
+unset.
 
 <hr/>
 
