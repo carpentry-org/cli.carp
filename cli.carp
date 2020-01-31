@@ -88,7 +88,8 @@ unset.")
       (match @t
         (Integer i) (str i)
         (Floating f) (str f)
-        (Str s) (str s)))
+        (Str s) (str s)
+        (None) @"none"))
 
     (defn to-int [x]
       (match x

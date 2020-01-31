@@ -3,8 +3,11 @@
 (defn main []
   (let [p (=> (CLI.new @"My super cool tool!")
               (CLI.add &(CLI.int "flag" "f" "my flag" true))
-              (CLI.add &(CLI.str "thing" "t" "my thing" false @"hi" &[@"a" @"b" @"hi"])))]
+              (CLI.add &(CLI.str "thing" "t" "my thing" false @"hi" &[@"a" @"b" @"hi"]))
+              (CLI.add &(CLI.str "other" "o" "my thing" false)))]
     (match (CLI.parse &p)
       (Result.Success flags)
-        (println* &(str &(Map.get &flags "flag")) " " &(str &(Map.get &flags "thing")))
+        (println*
+          &(str &(Map.get &flags "flag")) " " &(str &(Map.get &flags "thing"))
+          " " &(str &(Map.get &flags "other")))
       (Result.Error msg) (do (IO.errorln &msg) (CLI.usage &p)))))
