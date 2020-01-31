@@ -331,17 +331,22 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
       (for [i 1 (System.get-args-len)]
         (let [x (System.get-arg i)]
           (if (or (String.starts-with? x "--") (String.starts-with? x "-"))
-            (let [flag (Pattern.substitute #"^\-\-?" x "" 1)]
+            (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
+                  splt (String.split-by &flag &[\=])
+                  k (if (> (Array.length &splt) 1) (Array.unsafe-nth &splt 0) &flag)
+                  v (cond (> (Array.length &splt) 1) (Array.nth &splt 1)
+                          (< i (System.get-args-len))
+                            (do (set! i (Int.inc i)) (Maybe.Just @(System.get-arg i)))
+                          (Maybe.Nothing))]
               (cond
-                (CmdMap.contains? &values &flag)
-                  (do
-                    (set! i (Int.inc i))
-                    (if (< i (System.get-args-len))
-                      (CmdMap.put! &values &flag (System.get-arg i))
+                (CmdMap.contains? &values k)
+                  (match v
+                    (Maybe.Just val) (CmdMap.put! &values k &val)
+                    (Maybe.Nothing)
                       (do
                         (set! res (Result.Error (fmt "No value for: %s" &flag)))
-                        (break))))
-                (or (= &flag "help") (= &flag "h"))
+                        (break)))
+                (or (= k "help") (= k "h"))
                   (do
                     (set! res (Result.Error @""))
                     (break))
