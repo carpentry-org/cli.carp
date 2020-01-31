@@ -46,8 +46,8 @@ manually.
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
 in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
-the long flag name to the value (the values are `Maybe`s, since they might be
-optional arguments.")
+the long flag name to the value. The values are not in the map if they are
+unset.")
 (defmodule CLI
   (hidden Type)
   (private Type)
@@ -55,11 +55,16 @@ optional arguments.")
     (Integer [Long])
     (Floating [Double])
     (Str [String])
+    (None [])
   )
 
   (defmodule Type
     (defn = [a b]
       (match @a
+        (None)
+          (match @b
+            (None) true
+            _ false)
         (Integer i)
           (match @b
             (Integer j) (= i j)
@@ -109,6 +114,8 @@ optional arguments.")
       (match x
         (Floating d) d
         _ 0.0))
+
+    (defn zero [] (None))
   )
 
   (hidden Tag)
@@ -228,7 +235,10 @@ optional arguments.")
 
     (defn to-map [m]
       (Array.reduce
-        &(fn [a v] (Map.put a (Pair.a (Pair.a v)) (Pair.b (Pair.b v))))
+        &(fn [a v]
+          (match @(Pair.b (Pair.b v))
+            (Maybe.Just e) (Map.put a (Pair.a (Pair.a v)) &e)
+            (Maybe.Nothing) a))
         {}
         (values m)))
   )

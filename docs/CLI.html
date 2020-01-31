@@ -61,9 +61,28 @@ manually.</p>
 <p>Once you’re done building your flag structure, you can run <code>CLI.parse</code>. It
 will not abort the program on error, instead it will tell you what went wrong
 in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> contains a <code>Map</code> from
-the long flag name to the value (the values are <code>Maybe</code>s, since they might be
-optional arguments.</p>
+the long flag name to the value. The values are not in the map if they are
+unset.</p>
 
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#(defdynamic CLI.*gensym-counter* 1001)">
+                    <h3 id="(defdynamic CLI.*gensym-counter* 1001)">
+                        (defdynamic CLI.*gensym-counter* 1001)
+                    </h3>
+                </a>
+                <div class="description">
+                    dynamic
+                </div>
+                <p class="sig">
+                    Dynamic
+                </p>
+                <span>
+                    
+                </span>
+                <p class="doc">
+                    
+                </p>
             </div>
             <div class="binder">
                 <a class="anchor" href="#Option">
@@ -197,7 +216,7 @@ optional arguments.</p>
                     defn
                 </div>
                 <p class="sig">
-                    (λ [(Ref Parser)] (Result (Map String (Maybe Type)) String))
+                    (λ [(Ref Parser)] (Result (Map String Type) String))
                 </p>
                 <pre class="args">
                     (parse p)
