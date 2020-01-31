@@ -6,7 +6,7 @@
 (doc CLI "is a simple CLI library for Carp.
 
 ```clojure
-(load \"https://veitheller.de/git/carpentry/cli@0.0.5\")
+(load \"https://veitheller.de/git/carpentry/cli@0.0.6\")
 
 (defn main []
   (let [p (=> (CLI.new @\"My super cool tool!\")
@@ -21,7 +21,7 @@
 ## Installation
 
 ```clojure
-(load \"https://veitheller.de/git/carpentry/cli@0.0.5\")
+(load \"https://veitheller.de/git/carpentry/cli@0.0.6\")
 ```
 
 ## Usage
