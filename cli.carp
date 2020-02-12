@@ -418,7 +418,7 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
 (doc CLI "is a simple CLI library for Carp.
 
 ```clojure
-(load \"https://veitheller.de/git/carpentry/cli@0.0.6\")
+(load \"https://veitheller.de/git/carpentry/cli@0.0.7\")
 
 (defn main []
   (let [p (=> (CLI.new @\"My super cool tool!\")

@@ -3,7 +3,7 @@
 A simple CLI library for Carp.
 
 ```clojure
-(load "https://veitheller.de/git/carpentry/cli@0.0.6")
+(load "https://veitheller.de/git/carpentry/cli@0.0.7")
 
 (defn main []
   (let [p (=> (CLI.new @"My super cool tool!")
