@@ -42,13 +42,14 @@
       (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
 </code></pre>
 <h2>Installation</h2>
-<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.6&quot;)
+<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.7&quot;)
 </code></pre>
 <h2>Usage</h2>
 <p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
 now, three option types: integrals (longs), floating point numbers (doubles),
-and strings. They can be built using <code>CLI.int</code>, <code>CLI.float</code>, and <code>CLI.str</code>,
-respectively. Their structure is always the same:</p>
+and strings. They can be built using <code>CLI.int</code>, <code>CLI.float</code>, <code>CLI.bool</code>, and
+<code>CLI.str</code>, respectively. Their structure is always the same, except for
+booleans:</p>
 <pre><code class="language-clojure">(CLI.int &lt;long&gt; &lt;short&gt; &lt;description&gt; &lt;required?&gt;)
 ; or
 (CLI.int &lt;long&gt; &lt;short&gt; &lt;description&gt; &lt;required?&gt; &lt;default&gt;)
@@ -58,12 +59,33 @@ respectively. Their structure is always the same:</p>
 <p>You’ll have to set a default if you want to specify options, although you can
 set it to <code>(Maybe.Nothing)</code> if you want to make sure that it has to be set
 manually.</p>
+<p>Booleans neither take defaults nor options. If a boolean flag receives a value,
+it will be read as true unless it’s the string <code>false</code>.</p>
 <p>Once you’re done building your flag structure, you can run <code>CLI.parse</code>. It
 will not abort the program on error, instead it will tell you what went wrong
 in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> contains a <code>Map</code> from
 the long flag name to the value. The values are not in the map if they are
 unset.</p>
 
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#CmdMap">
+                    <h3 id="CmdMap">
+                        CmdMap
+                    </h3>
+                </a>
+                <div class="description">
+                    module
+                </div>
+                <p class="sig">
+                    Module
+                </p>
+                <span>
+                    
+                </span>
+                <p class="doc">
+                    
+                </p>
             </div>
             <div class="binder">
                 <a class="anchor" href="#Option">
@@ -117,13 +139,33 @@ unset.</p>
                     defn
                 </div>
                 <p class="sig">
-                    (λ [Parser, (Ref Option)] Parser)
+                    (λ [Parser, (Ref Option a)] Parser)
                 </p>
                 <pre class="args">
                     (add p opt)
                 </pre>
                 <p class="doc">
                     <p>adds an <code>Option</code> <code>opt</code> to the <code>Parser</code> <code>p</code>.</p>
+
+                </p>
+            </div>
+            <div class="binder">
+                <a class="anchor" href="#bool">
+                    <h3 id="bool">
+                        bool
+                    </h3>
+                </a>
+                <div class="description">
+                    macro
+                </div>
+                <p class="sig">
+                    Macro
+                </p>
+                <pre class="args">
+                    (bool long short description)
+                </pre>
+                <p class="doc">
+                    <p>creates a boolean option.</p>
 
                 </p>
             </div>
@@ -197,7 +239,7 @@ unset.</p>
                     defn
                 </div>
                 <p class="sig">
-                    (λ [(Ref Parser)] (Result (Map String Type) String))
+                    (λ [(Ref Parser a)] (Result (Map String Type) String))
                 </p>
                 <pre class="args">
                     (parse p)
@@ -243,7 +285,7 @@ mesage is empty, <code>--help</code> was requested. If you don’t want to provi
                     defn
                 </div>
                 <p class="sig">
-                    (λ [(Ref Parser)] ())
+                    (λ [(Ref Parser a)] ())
                 </p>
                 <pre class="args">
                     (usage p)

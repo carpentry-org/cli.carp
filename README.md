@@ -18,15 +18,16 @@ A simple CLI library for Carp.
 ## Installation
 
 ```clojure
-(load "https://veitheller.de/git/carpentry/cli@0.0.6")
+(load "https://veitheller.de/git/carpentry/cli@0.0.7")
 ```
 
 ## Usage
 
 `CLI` should be built using combinators, as in the example above. It has, as of
 now, three option types: integrals (longs), floating point numbers (doubles),
-and strings. They can be built using `CLI.int`, `CLI.float`, and `CLI.str`,
-respectively. Their structure is always the same:
+and strings. They can be built using `CLI.int`, `CLI.float`, `CLI.bool`, and
+`CLI.str`, respectively. Their structure is always the same, except for
+booleans:
 
 ```clojure
 (CLI.int <long> <short> <description> <required?>)
@@ -39,6 +40,9 @@ respectively. Their structure is always the same:
 You’ll have to set a default if you want to specify options, although you can
 set it to `(Maybe.Nothing)` if you want to make sure that it has to be set
 manually.
+
+Booleans neither take defaults nor options. If a boolean flag receives a value,
+it will be read as true unless it’s the string `false`.
 
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
