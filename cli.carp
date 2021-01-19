@@ -34,12 +34,14 @@
           (match @b
             (Str t) (= s t)
             _ false)))
+    (implements = CLI.Type.=)
 
     (defn format [s t]
       (match @t
         (Integer i) (Long.format s i)
         (Floating f) (Double.format s f)
         (Str s2) (format s &s2)))
+    (implements format CLI.Type.format)
 
     (defn str [t]
       (match @t
@@ -48,6 +50,7 @@
         (Str s) (str s)
         (Boolean b) (str b)
         (None) @"none"))
+    (implements str CLI.Type.str)
 
     (defn to-int [x]
       (match x
@@ -80,6 +83,7 @@
         _ 0.0))
 
     (defn zero [] (None))
+    (implements zero CLI.Type.zero)
   )
 
   (hidden Tag)
@@ -94,8 +98,8 @@
   (defmodule Tag
     (defn to-type [t s]
       (match t
-        (Integer) (CLI.Type.Integer (Long.from-string s))
-        (Floating) (CLI.Type.Floating (Double.from-string s))
+        (Integer) (CLI.Type.Integer (Maybe.unsafe-from (from-string s)))
+        (Floating) (CLI.Type.Floating (Maybe.unsafe-from (from-string s)))
         (Str) (CLI.Type.Str @s)
         (Boolean) (CLI.Type.Boolean (/= s "false"))))
 
@@ -117,25 +121,26 @@
           (match @b
             (Boolean) true
             _ false)))
+    (implements = CLI.Tag.=)
   )
 
   (doc Option "is the option type. To construct an `Option`, please use
 [`int`](#int), [`float`](#float), or [`str`](#str).")
   (deftype Option [
-    type- Tag
+    type- CLI.Tag
     long String
     short String
     description String
     required? Bool
-    default (Maybe Type)
-    options (Maybe (Array Type))
+    default (Maybe CLI.Type)
+    options (Maybe (Array CLI.Type))
   ])
 
   (doc Parser "is the parser type. To construct a `Parser`, please use
 [`new`](#new).")
   (deftype Parser [
     description String
-    options (Array Option)
+    options (Array CLI.Option)
   ])
 
   ; this is pretty brutal. It’s a (Pair (Pair <long> <short>) (<tag> <value>))
@@ -145,11 +150,10 @@
   (hidden CmdMap)
 
   (deftype CmdMap [
-    values (Array (Pair (Pair String String) (Pair Tag (Maybe Type))))
+    values (Array (Pair (Pair String String) (Pair CLI.Tag (Maybe CLI.Type))))
   ])
 
   (defmodule CmdMap
-    (use Array)
     (defn new [] (init []))
 
     (defn put [m o v]
@@ -265,21 +269,20 @@
     (Parser.update-options p &(fn [options] (push-back options @opt))))
 
   (hidden option-)
-  (private option-)
   (defndynamic option- [t long short description required default-options]
     (if (= (length default-options) 0)
-      (list 'CLI.Option.init (list t)
-        (list 'copy long) (list 'copy short) (list 'copy description)
-        required '(Maybe.Nothing) '(Maybe.Nothing))
+      `(CLI.Option.init (%t)
+        (copy %long) (copy %short) (copy %description)
+        %required (Maybe.Nothing) (Maybe.Nothing))
       (if (= (length default-options) 1)
-        (list 'CLI.Option.init (list t)
-          (list 'copy long) (list 'copy short) (list 'copy description)
-          required (list 'Maybe.Just (list 'to-cli-type (car default-options))) '(Maybe.Nothing))
-        (list 'CLI.Option.init (list t)
-          (list 'copy long) (list 'copy short) (list 'copy description)
-          required (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-          (list 'Maybe.Just
-            (list 'Array.copy-map '(ref (fn [e] (to-cli-type @e))) (cadr default-options)))))))
+        `(CLI.Option.init (%t)
+          (copy %long) (copy %short) (copy %description)
+          %required (Maybe.Just (to-cli-type %(car default-options))) (Maybe.Nothing))
+        `(CLI.Option.init (%t)
+          (copy %long) (copy %short) (copy %description)
+          %required (Maybe.Just (to-cli-type %(car default-options)))
+          (Maybe.Just
+            (Array.copy-map &(fn [e] (to-cli-type @e)) %(cadr default-options)))))))
 
   (doc bool "creates a boolean option.")
   (defmacro bool [long short description]
@@ -311,7 +314,8 @@
     (do
       (IO.println
         &(fmt "usage: %s %s\n%s\nOptions:"
-              (System.get-arg 0) &(options-str p) (Parser.description p)))
+              (StaticArray.unsafe-nth &System.args 0)
+              &(options-str p) (Parser.description p)))
       (for [i 0 (length (Parser.options p))]
         (let [arg (unsafe-nth (Parser.options p) i)]
           (do
@@ -340,16 +344,17 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
   (defn parse [p]
     (let-do [values (Parser.values p)
              res (Result.Success @p)
-             options (Parser.options p)]
-      (for [i 1 (System.get-args-len)]
-        (let [x (System.get-arg i)]
+             options (Parser.options p)
+             len (StaticArray.length &System.args)]
+      (for [i 1 len]
+        (let [x (StaticArray.unsafe-nth &System.args i)]
           (if (or (starts-with? x "--") (starts-with? x "-"))
             (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
                   splt (split-by &flag &[\=])
                   k (if (> (length &splt) 1) (unsafe-nth &splt 0) &flag)
                   v (cond (> (length &splt) 1) (nth &splt 1)
-                          (< i (Int.dec (System.get-args-len)))
-                            (do (set! i (Int.inc i)) (Maybe.Just @(System.get-arg i)))
+                          (< i (Int.dec len))
+                            (do (set! i (Int.inc i)) (Maybe.Just @(StaticArray.unsafe-nth &System.args i)))
                           (Maybe.Nothing))]
               (cond
                 (CmdMap.contains? &values k)
@@ -405,14 +410,17 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
 
 (defmodule String
   (defn to-cli-type [s] (CLI.Type.Str s))
+  (implements to-cli-type String.to-cli-type)
 )
 
 (defmodule Double
   (defn to-cli-type [f] (CLI.Type.Floating f))
+  (implements to-cli-type Double.to-cli-type)
 )
 
 (defmodule Long
   (defn to-cli-type [l] (CLI.Type.Integer l))
+  (implements to-cli-type Long.to-cli-type)
 )
 
 (doc CLI "is a simple CLI library for Carp.
