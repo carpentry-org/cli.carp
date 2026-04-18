@@ -18,6 +18,3 @@ jobs:
 
       - name: Setup Carp
         uses: carpentry-org/setup-carp@v1
-
-      - name: Generate docs
-        run: carp -x gendocs.carp
