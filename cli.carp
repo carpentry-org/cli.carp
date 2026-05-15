@@ -50,7 +50,11 @@
 
   (hidden Tag)
   (private Tag)
-  (deftype Tag (Integer []) (Floating []) (Str []) (Boolean []))
+  (deftype Tag
+    (Integer [])
+    (Floating [])
+    (Str [])
+    (Boolean []))
 
   (defmodule Tag
     (defn to-type [t s]
@@ -97,18 +101,15 @@
     (defn new [] (init []))
 
     (defn put [m o v]
-      (update-values
-        m
+      (update-values m
         &(fn [vs]
-          (push-back
-            vs
+          (push-back vs
             (Pair.init (Pair.init @(CLI.Option.long o) @(CLI.Option.short o)) @v)))))
 
     (defn put-empty [m o]
-      (put
-        m
-        o
-        &(Pair.init-from-refs (CLI.Option.type- o) (CLI.Option.default o))))
+      (put m
+           o
+           &(Pair.init-from-refs (CLI.Option.type- o) (CLI.Option.default o))))
 
     (defn contains? [m s]
       (let-do [found false
@@ -182,13 +183,12 @@
               (break))))))
 
     (defn to-map [m]
-      (reduce
-        &(fn [a v]
-          (match @(Pair.b (Pair.b v))
-            (Maybe.Just e) (Map.put a (Pair.a (Pair.a v)) &e)
-            (Maybe.Nothing) a))
-        {}
-        (values m))))
+      (reduce &(fn [a v]
+                (match @(Pair.b (Pair.b v))
+                  (Maybe.Just e) (Map.put a (Pair.a (Pair.a v)) &e)
+                  (Maybe.Nothing) a))
+              {}
+              (values m))))
 
   (defmodule Parser
     (defn values [p]
@@ -205,39 +205,34 @@
   (private option-)
   (defndynamic option- [t long short description required default-options]
     (if (= (length default-options) 0)
-      (list
-        'CLI.Option.init
-        (list t)
-        (list 'copy long)
-        (list 'copy short)
-        (list 'copy description)
-        required
-        '(Maybe.Nothing)
-        '(Maybe.Nothing))
+      (list 'CLI.Option.init
+            (list t)
+            (list 'copy long)
+            (list 'copy short)
+            (list 'copy description)
+            required
+            '(Maybe.Nothing)
+            '(Maybe.Nothing))
       (if (= (length default-options) 1)
-        (list
-          'CLI.Option.init
-          (list t)
-          (list 'copy long)
-          (list 'copy short)
-          (list 'copy description)
-          required
-          (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-          '(Maybe.Nothing))
-        (list
-          'CLI.Option.init
-          (list t)
-          (list 'copy long)
-          (list 'copy short)
-          (list 'copy description)
-          required
-          (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-          (list
-            'Maybe.Just
-            (list
-              'Array.copy-map
-              '(ref (fn [e] (to-cli-type @e)))
-              (cadr default-options)))))))
+        (list 'CLI.Option.init
+              (list t)
+              (list 'copy long)
+              (list 'copy short)
+              (list 'copy description)
+              required
+              (list 'Maybe.Just (list 'to-cli-type (car default-options)))
+              '(Maybe.Nothing))
+        (list 'CLI.Option.init
+              (list t)
+              (list 'copy long)
+              (list 'copy short)
+              (list 'copy description)
+              required
+              (list 'Maybe.Just (list 'to-cli-type (car default-options)))
+              (list 'Maybe.Just
+                    (list 'Array.copy-map
+                      '(ref (fn [e] (to-cli-type @e)))
+                      (cadr default-options)))))))
 
   (doc bool "creates a boolean option.")
   (defmacro bool [long short description]
@@ -249,32 +244,29 @@
 
   (doc int "creates a integer option. The actual type is a `Long`.")
   (defmacro int [long short description required :rest default-options]
-    (CLI.option-
-      'CLI.Tag.Integer
-      long
-      short
-      description
-      required
-      default-options))
+    (CLI.option- 'CLI.Tag.Integer
+                 long
+                 short
+                 description
+                 required
+                 default-options))
 
   (doc float "creates a integer option. The actual type is a `Double`.")
   (defmacro float [long short description required :rest default-options]
-    (CLI.option-
-      'CLI.Tag.Floating
-      long
-      short
-      description
-      required
-      default-options))
+    (CLI.option- 'CLI.Tag.Floating
+                 long
+                 short
+                 description
+                 required
+                 default-options))
 
   (private options-str)
   (hidden options-str)
   (defn options-str [p]
-    (join
-      " "
-      &(copy-map
-        &(fn [o] (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
-        (Parser.options p))))
+    (join " "
+          &(copy-map &(fn [o]
+              (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
+            (Parser.options p))))
 
   (doc usage "takes a `Parser` `p` and prints its usage information.")
   (defn usage [p] (do (IO.println &(fmt "usage: %s %s
@@ -284,24 +276,19 @@ Options:" (System.get-arg 0) &(options-str p) (Parser.description p))) (for [
           0
           (length (Parser.options p))]
         (let-do [arg (unsafe-nth (Parser.options p) i)]
-          (IO.print
-            &(fmt
-              "  --%s|-%s: %s"
-              (Option.long arg)
-              (Option.short arg)
-              (Option.description arg)))
+          (IO.print &(fmt "  --%s|-%s: %s"
+                      (Option.long arg)
+                      (Option.short arg)
+                      (Option.description arg)))
           (when @(Option.required? arg) (IO.print " REQUIRED"))
           (when (Maybe.just? (Option.default arg))
-            (IO.print
-              &(fmt
-                " (default: %s)"
+            (IO.print &(fmt " (default: %s)"
                 &(str &(Maybe.unsafe-from @(Option.default arg))))))
           (match @(Option.options arg)
             (Maybe.Just o)
               (IO.print &(fmt " (options: %s)" &(join ", " &(copy-map &str &o))))
             (Maybe.Nothing) ())
-          (IO.println ""))) (IO.println
-        "  --help|-h: print this help message and exit.")))
+          (IO.println ""))) (IO.println "  --help|-h: print this help message and exit.")))
 
   (doc parse "parses the arguments as specified by the parser `p`.
 
@@ -338,8 +325,7 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
                       (Maybe.Just val) (CmdMap.put! &values k &val)
                       (Maybe.Nothing)
                         (do
-                          (set!
-                            res
+                          (set! res
                             (Result.Error (fmt "No value for: %s" &flag)))
                           (break))))
                 (or (= k "help") (= k "h"))
@@ -354,23 +340,18 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
         (for [i 0 (length options)]
           (let [o (unsafe-nth options i)]
             (cond
-              (and
-                @(Option.required? o)
-                (not (CmdMap.set? &values (Option.long o))))
+              (and @(Option.required? o)
+                   (not (CmdMap.set? &values (Option.long o))))
                 (do
-                  (set!
-                    res
-                    (Result.Error
-                      (fmt "Required option missing: --%s" (Option.long o))))
+                  (set! res
+                    (Result.Error (fmt "Required option missing: --%s"
+                        (Option.long o))))
                   (break))
               (Maybe.just? (Option.options o))
                 (let-do [opts (Maybe.unsafe-from @(Option.options o))]
                   (unless-do (CmdMap.in? &values (Option.long o) &opts)
-                    (set!
-                      res
-                      (Result.Error
-                        (fmt
-                          "Option %s received an invalid option %s (Options are %s)"
+                    (set! res
+                      (Result.Error (fmt "Option %s received an invalid option %s (Options are %s)"
                           (Option.long o)
                           &(CmdMap.get &values (Option.long o))
                           &(join ", " &(copy-map &str &opts)))))
