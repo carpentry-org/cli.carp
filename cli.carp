@@ -59,8 +59,8 @@
   (defmodule Tag
     (defn to-type [t s]
       (match t
-        (Integer) (CLI.Type.Integer (Long.from-string s))
-        (Floating) (CLI.Type.Floating (Double.from-string s))
+        (Integer) (CLI.Type.Integer (Maybe.from 0l (Long.from-string s)))
+        (Floating) (CLI.Type.Floating (Maybe.from 0.0 (Double.from-string s)))
         (Str) (CLI.Type.Str @s)
         (Boolean) (CLI.Type.Boolean (/= s "false"))))
 
