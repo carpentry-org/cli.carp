@@ -1,0 +1,335 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo">
+                <a href="">
+                    <img src="">
+                </a>
+                <div class="title">
+                    cli
+                </div>
+                <div class="index">
+                    <ul>
+                        <li>
+                            <details>
+                                <summary>
+                                    <a href="CLI.html">
+                                        CLI
+                                    </a>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a href="CLI.Option.html">
+                                            Option
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Parser.html">
+                                            Parser
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="module">
+                <h1>
+                    CLI.Parser
+                </h1>
+                <div class="module-description">
+                    <p>is the parser type. To construct a <code>Parser</code>, please use
+<a href="#new"><code>new</code></a>.</p>
+
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#copy">
+                        <h3 id="copy">
+                            copy
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>copies a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#delete">
+                        <h3 id="delete">
+                            delete
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>deletes a <code>Parser</code>. Should usually not be called manually.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#description">
+                        <h3 id="description">
+                            description
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] (Ref String a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>description</code> property of a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init">
+                        <h3 id="init">
+                            init
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [String, (Array CLI.Option)] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#options">
+                        <h3 id="options">
+                            options
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] (Ref (Array CLI.Option) a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>options</code> property of a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#prn">
+                        <h3 id="prn">
+                            prn
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>Parser</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-description">
+                        <h3 id="set-description">
+                            set-description
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, String] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>description</code> property of a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-description!">
+                        <h3 id="set-description!">
+                            set-description!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a), String] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>description</code> property of a <code>Parser</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-options">
+                        <h3 id="set-options">
+                            set-options
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, (Array CLI.Option)] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>options</code> property of a <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-options!">
+                        <h3 id="set-options!">
+                            set-options!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a), (Array CLI.Option)] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>options</code> property of a <code>Parser</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#str">
+                        <h3 id="str">
+                            str
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>Parser</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-description">
+                        <h3 id="update-description">
+                            update-description
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, (Ref (Fn [String] String a) b)] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>description</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-options">
+                        <h3 id="update-options">
+                            update-options
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, (Ref (Fn [(Array CLI.Option)] (Array CLI.Option) a) b)] CLI.Parser)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>options</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#values">
+                        <h3 id="values">
+                            values
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] CLI.CmdMap)
+                    </p>
+                    <pre class="args">
+                        (values p)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

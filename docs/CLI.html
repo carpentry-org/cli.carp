@@ -9,8 +9,8 @@
     <body>
         <div class="content">
             <div class="logo">
-                <a href="http://github.com/carp-lang/Carp">
-                    <img src="logo.png">
+                <a href="">
+                    <img src="">
                 </a>
                 <div class="title">
                     cli
@@ -18,19 +18,36 @@
                 <div class="index">
                     <ul>
                         <li>
-                            <a href="CLI.html">
-                                CLI
-                            </a>
+                            <details>
+                                <summary>
+                                    <a href="CLI.html">
+                                        CLI
+                                    </a>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a href="CLI.Option.html">
+                                            Option
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Parser.html">
+                                            Parser
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
                         </li>
                     </ul>
                 </div>
             </div>
-            <h1>
-                CLI
-            </h1>
-            <div class="module-description">
-                <p>is a simple CLI library for Carp.</p>
-<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.7&quot;)
+            <div class="module">
+                <h1>
+                    CLI
+                </h1>
+                <div class="module-description">
+                    <p>is a simple CLI library for Carp.</p>
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.0.8&quot;)
 
 (defn main []
   (let [p (=&gt; (CLI.new @&quot;My super cool tool!&quot;)
@@ -42,7 +59,7 @@
       (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
 </code></pre>
 <h2>Installation</h2>
-<pre><code class="language-clojure">(load &quot;https://veitheller.de/git/carpentry/cli@0.0.7&quot;)
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.0.8&quot;)
 </code></pre>
 <h2>Usage</h2>
 <p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
@@ -67,233 +84,219 @@ in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> 
 the long flag name to the value. The values are not in the map if they are
 unset.</p>
 
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#CmdMap">
-                    <h3 id="CmdMap">
-                        CmdMap
-                    </h3>
-                </a>
-                <div class="description">
-                    module
                 </div>
-                <p class="sig">
-                    Module
-                </p>
-                <span>
-                    
-                </span>
-                <p class="doc">
-                    
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#Option">
-                    <h3 id="Option">
-                        Option
-                    </h3>
-                </a>
-                <div class="description">
-                    module
-                </div>
-                <p class="sig">
-                    Module
-                </p>
-                <span>
-                    
-                </span>
-                <p class="doc">
-                    <p>is the option type. To construct an <code>Option</code>, please use
+                <div class="binder">
+                    <a class="anchor" href="#Option">
+                        <h3 id="Option">
+                            <a href="CLI.Option.html">
+                                Option
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>is the option type. To construct an <code>Option</code>, please use
 <a href="#int"><code>int</code></a>, <a href="#float"><code>float</code></a>, or <a href="#str"><code>str</code></a>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#Parser">
-                    <h3 id="Parser">
-                        Parser
-                    </h3>
-                </a>
-                <div class="description">
-                    module
+                    </p>
                 </div>
-                <p class="sig">
-                    Module
-                </p>
-                <span>
-                    
-                </span>
-                <p class="doc">
-                    <p>is the parser type. To construct a <code>Parser</code>, please use
+                <div class="binder">
+                    <a class="anchor" href="#Parser">
+                        <h3 id="Parser">
+                            <a href="CLI.Parser.html">
+                                Parser
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>is the parser type. To construct a <code>Parser</code>, please use
 <a href="#new"><code>new</code></a>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#add">
-                    <h3 id="add">
-                        add
-                    </h3>
-                </a>
-                <div class="description">
-                    defn
+                    </p>
                 </div>
-                <p class="sig">
-                    (λ [Parser, (Ref Option a)] Parser)
-                </p>
-                <pre class="args">
-                    (add p opt)
-                </pre>
-                <p class="doc">
-                    <p>adds an <code>Option</code> <code>opt</code> to the <code>Parser</code> <code>p</code>.</p>
+                <div class="binder">
+                    <a class="anchor" href="#add">
+                        <h3 id="add">
+                            add
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, (Ref CLI.Option a)] CLI.Parser)
+                    </p>
+                    <pre class="args">
+                        (add p opt)
+                    </pre>
+                    <p class="doc">
+                        <p>adds an <code>Option</code> <code>opt</code> to the <code>Parser</code> <code>p</code>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#bool">
-                    <h3 id="bool">
-                        bool
-                    </h3>
-                </a>
-                <div class="description">
-                    macro
+                    </p>
                 </div>
-                <p class="sig">
-                    Macro
-                </p>
-                <pre class="args">
-                    (bool long short description)
-                </pre>
-                <p class="doc">
-                    <p>creates a boolean option.</p>
+                <div class="binder">
+                    <a class="anchor" href="#bool">
+                        <h3 id="bool">
+                            bool
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (bool long short description)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a boolean option.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#float">
-                    <h3 id="float">
-                        float
-                    </h3>
-                </a>
-                <div class="description">
-                    macro
+                    </p>
                 </div>
-                <p class="sig">
-                    Macro
-                </p>
-                <pre class="args">
-                    (float long short description required :rest default-options)
-                </pre>
-                <p class="doc">
-                    <p>creates a integer option. The actual type is a <code>Double</code>.</p>
+                <div class="binder">
+                    <a class="anchor" href="#float">
+                        <h3 id="float">
+                            float
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (float long short description required :rest default-options)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a floating point option. The actual type is a <code>Double</code>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#int">
-                    <h3 id="int">
-                        int
-                    </h3>
-                </a>
-                <div class="description">
-                    macro
+                    </p>
                 </div>
-                <p class="sig">
-                    Macro
-                </p>
-                <pre class="args">
-                    (int long short description required :rest default-options)
-                </pre>
-                <p class="doc">
-                    <p>creates a integer option. The actual type is a <code>Long</code>.</p>
+                <div class="binder">
+                    <a class="anchor" href="#int">
+                        <h3 id="int">
+                            int
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (int long short description required :rest default-options)
+                    </pre>
+                    <p class="doc">
+                        <p>creates an integer option. The actual type is a <code>Long</code>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#new">
-                    <h3 id="new">
-                        new
-                    </h3>
-                </a>
-                <div class="description">
-                    defn
+                    </p>
                 </div>
-                <p class="sig">
-                    (λ [String] Parser)
-                </p>
-                <pre class="args">
-                    (new descr)
-                </pre>
-                <p class="doc">
-                    <p>creates a new <code>Parser</code> with a program description <code>descr</code>.</p>
+                <div class="binder">
+                    <a class="anchor" href="#new">
+                        <h3 id="new">
+                            new
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [String] CLI.Parser)
+                    </p>
+                    <pre class="args">
+                        (new descr)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a new <code>Parser</code> with a program description <code>descr</code>.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#parse">
-                    <h3 id="parse">
-                        parse
-                    </h3>
-                </a>
-                <div class="description">
-                    defn
+                    </p>
                 </div>
-                <p class="sig">
-                    (λ [(Ref Parser a)] (Result (Map String Type) String))
-                </p>
-                <pre class="args">
-                    (parse p)
-                </pre>
-                <p class="doc">
-                    <p>parses the arguments as specified by the parser <code>p</code>.</p>
+                <div class="binder">
+                    <a class="anchor" href="#parse">
+                        <h3 id="parse">
+                            parse
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] (Result (Map String CLI.Type) String))
+                    </p>
+                    <pre class="args">
+                        (parse p)
+                    </pre>
+                    <p class="doc">
+                        <p>parses the arguments as specified by the parser <code>p</code>.</p>
 <p>If everything goes right, it will return a <code>Success</code> containing a map from
 the long arguments to their values. Because values can be optional, they are
 returned as <code>Maybe</code>.</p>
 <p>Otherwise it will return an <code>Error</code> containing an error message. If that error
-mesage is empty, <code>--help</code> was requested. If you don’t want to provide a
+message is empty, <code>--help</code> was requested. If you don’t want to provide a
 <code>--help</code> feature, you can override that flag.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#str">
-                    <h3 id="str">
-                        str
-                    </h3>
-                </a>
-                <div class="description">
-                    macro
+                    </p>
                 </div>
-                <p class="sig">
-                    Macro
-                </p>
-                <pre class="args">
-                    (str long short description required :rest default-options)
-                </pre>
-                <p class="doc">
-                    <p>creates a string option.</p>
+                <div class="binder">
+                    <a class="anchor" href="#str">
+                        <h3 id="str">
+                            str
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (str long short description required :rest default-options)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a string option.</p>
 
-                </p>
-            </div>
-            <div class="binder">
-                <a class="anchor" href="#usage">
-                    <h3 id="usage">
-                        usage
-                    </h3>
-                </a>
-                <div class="description">
-                    defn
+                    </p>
                 </div>
-                <p class="sig">
-                    (λ [(Ref Parser a)] ())
-                </p>
-                <pre class="args">
-                    (usage p)
-                </pre>
-                <p class="doc">
-                    <p>takes a <code>Parser</code> <code>p</code> and prints its usage information.</p>
+                <div class="binder">
+                    <a class="anchor" href="#usage">
+                        <h3 id="usage">
+                            usage
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Parser a)] ())
+                    </p>
+                    <pre class="args">
+                        (usage p)
+                    </pre>
+                    <p class="doc">
+                        <p>takes a <code>Parser</code> <code>p</code> and prints its usage information.</p>
 
-                </p>
+                    </p>
+                </div>
             </div>
         </div>
     </body>

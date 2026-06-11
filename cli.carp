@@ -1,6 +1,3 @@
-; TODO: this is temporary until we have this in the stdlib
-(defmodule Maybe (defn zero [] (Maybe.Nothing)))
-
 (defmodule CLI
   (use Array)
   (hidden Type)
@@ -18,21 +15,27 @@
         (None) (match @b (None) true _ false)
         (Integer i) (match @b (Integer j) (= i j) _ false)
         (Floating f) (match @b (Floating g) (= f g) _ false)
-        (Str s) (match @b (Str t) (= s t) _ false)))
+        (Str s) (match @b (Str t) (= s t) _ false)
+        (Boolean p) (match @b (Boolean q) (= p q) _ false)))
+    (implements = CLI.Type.=)
 
     (defn format [s t]
       (match @t
         (Integer i) (Long.format s i)
         (Floating f) (Double.format s f)
-        (Str s2) (format s &s2)))
+        (Str s2) (String.format s &s2)
+        (Boolean b) (String.format s &(Bool.str b))
+        (None) (String.format s "none")))
+    (implements format CLI.Type.format)
 
     (defn str [t]
       (match @t
-        (Integer i) (str i)
-        (Floating f) (str f)
-        (Str s) (str s)
-        (Boolean b) (str b)
-        (None) @"none"))
+        (Type.Integer i) (Long.str i)
+        (Type.Floating f) (Double.str f)
+        (Type.Str s) s
+        (Type.Boolean b) (Bool.str b)
+        (Type.None) @"none"))
+    (implements str CLI.Type.str)
 
     (defn to-int [x] (match x (Integer l) (Long.to-int l) _ 0))
 
@@ -46,46 +49,48 @@
 
     (defn to-double [x] (match x (Floating d) d _ 0.0))
 
-    (defn zero [] (None)))
+    (defn zero [] (None))
+    (implements zero CLI.Type.zero))
 
   (hidden Tag)
   (private Tag)
   (deftype Tag
-    (Integer [])
-    (Floating [])
-    (Str [])
-    (Boolean []))
+    (TInteger [])
+    (TFloating [])
+    (TStr [])
+    (TBoolean []))
 
   (defmodule Tag
     (defn to-type [t s]
       (match t
-        (Integer) (CLI.Type.Integer (Maybe.from 0l (Long.from-string s)))
-        (Floating) (CLI.Type.Floating (Maybe.from 0.0 (Double.from-string s)))
-        (Str) (CLI.Type.Str @s)
-        (Boolean) (CLI.Type.Boolean (/= s "false"))))
+        (TInteger) (CLI.Type.Integer (Maybe.from (Long.from-string s) 0l))
+        (TFloating) (CLI.Type.Floating (Maybe.from (Double.from-string s) 0.0))
+        (TStr) (CLI.Type.Str @s)
+        (TBoolean) (CLI.Type.Boolean (/= s "false"))))
 
     (defn = [a b]
       (match @a
-        (Integer) (match @b (Integer) true _ false)
-        (Floating) (match @b (Floating) true _ false)
-        (Str) (match @b (Str) true _ false)
-        (Boolean) (match @b (Boolean) true _ false))))
+        (TInteger) (match @b (TInteger) true _ false)
+        (TFloating) (match @b (TFloating) true _ false)
+        (TStr) (match @b (TStr) true _ false)
+        (TBoolean) (match @b (TBoolean) true _ false)))
+    (implements = CLI.Tag.=))
 
   (doc Option "is the option type. To construct an `Option`, please use
 [`int`](#int), [`float`](#float), or [`str`](#str).")
   (deftype Option
-    [type- Tag
+    [type- CLI.Tag
      long String
      short String
      description String
      required? Bool
-     default (Maybe Type)
-     options (Maybe (Array Type))])
+     default (Maybe CLI.Type)
+     options (Maybe (Array CLI.Type))])
 
   (doc Parser "is the parser type. To construct a `Parser`, please use
 [`new`](#new).")
   (deftype Parser [description String
-                   options (Array Option)])
+                   options (Array CLI.Option)])
 
   ; this is pretty brutal. It’s a (Pair (Pair <long> <short>) (<tag> <value>))
   ; we need to make our own map because long or short might match and both are
@@ -94,7 +99,7 @@
   (hidden CmdMap)
 
   (deftype CmdMap
-    [values (Array (Pair (Pair String String) (Pair Tag (Maybe Type))))])
+    [values (Array (Pair (Pair String String) (Pair CLI.Tag (Maybe CLI.Type))))])
 
   (defmodule CmdMap
     (use Array)
@@ -159,7 +164,7 @@
             (when (or (= (Pair.a k) s) (= (Pair.b k) s))
               (match @v
                 (Maybe.Just value)
-                  (do (set! found (contains? vs &value)) (break))
+                  (do (set! found (Array.contains? vs &value)) (break))
                 (Maybe.Nothing) (break)))))
         found))
 
@@ -240,24 +245,24 @@
 
   (doc bool "creates a boolean option.")
   (defmacro bool [long short description]
-    (CLI.option- 'CLI.Tag.Boolean long short description false []))
+    (CLI.option- 'CLI.Tag.TBoolean long short description false []))
 
   (doc str "creates a string option.")
   (defmacro str [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.Str long short description required default-options))
+    (CLI.option- 'CLI.Tag.TStr long short description required default-options))
 
-  (doc int "creates a integer option. The actual type is a `Long`.")
+  (doc int "creates an integer option. The actual type is a `Long`.")
   (defmacro int [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.Integer
+    (CLI.option- 'CLI.Tag.TInteger
                  long
                  short
                  description
                  required
                  default-options))
 
-  (doc float "creates a integer option. The actual type is a `Double`.")
+  (doc float "creates a floating point option. The actual type is a `Double`.")
   (defmacro float [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.Floating
+    (CLI.option- 'CLI.Tag.TFloating
                  long
                  short
                  description
@@ -275,7 +280,7 @@
   (doc usage "takes a `Parser` `p` and prints its usage information.")
   (defn usage [p] (do (IO.println &(fmt "usage: %s %s
 %s
-Options:" (System.get-arg 0) &(options-str p) (Parser.description p))) (for [i
+Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.description p))) (for [i
                                                                              0
                                                                              (length (Parser.options p))]
         (let-do [arg (unsafe-nth (Parser.options p) i)]
@@ -286,9 +291,8 @@ Options:" (System.get-arg 0) &(options-str p) (Parser.description p))) (for [i
                   (Option.description arg)))
           (when @(Option.required? arg) (IO.print " REQUIRED"))
           (when (Maybe.just? (Option.default arg))
-            (IO.print
-              &(fmt " (default: %s)"
-                    &(str &(Maybe.unsafe-from @(Option.default arg))))))
+            (let [d (CLI.Type.str &(Maybe.unsafe-from @(Option.default arg)))]
+              (IO.print &(fmt " (default: %s)" &d))))
           (match @(Option.options arg)
             (Maybe.Just o)
               (IO.print &(fmt " (options: %s)" &(join ", " &(copy-map &str &o))))
@@ -303,26 +307,26 @@ the long arguments to their values. Because values can be optional, they are
 returned as `Maybe`.
 
 Otherwise it will return an `Error` containing an error message. If that error
-mesage is empty, `--help` was requested. If you don’t want to provide a
+message is empty, `--help` was requested. If you don’t want to provide a
 `--help` feature, you can override that flag.")
   (defn parse [p]
     (let-do [values (Parser.values p)
              res (Result.Success @p)
              options (Parser.options p)]
-      (for [i 1 (System.get-args-len)]
-        (let [x (System.get-arg i)]
+      (for [i 1 (StaticArray.length &System.args)]
+        (let [x (StaticArray.unsafe-nth &System.args i)]
           (if (or (starts-with? x "--") (starts-with? x "-"))
             (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
                   splt (split-by &flag &[\=])
                   k (if (> (length &splt) 1) (unsafe-nth &splt 0) &flag)
                   v (cond
                     (> (length &splt) 1) (nth &splt 1)
-                    (< i (Int.dec (System.get-args-len)))
-                      (do (set! i (Int.inc i)) (Maybe.Just @(System.get-arg i)))
+                    (< i (Int.dec (StaticArray.length &System.args)))
+                      (do (set! i (Int.inc i)) (Maybe.Just @(StaticArray.unsafe-nth &System.args i)))
                     (Maybe.Nothing))]
               (cond
                 (CmdMap.contains? &values k)
-                  (if (CmdMap.type? &values k &(Tag.Boolean))
+                  (if (CmdMap.type? &values k &(Tag.TBoolean))
                     (do
                       (when (and (Maybe.just? &v) (> (length &splt) 1))
                         (set! i (Int.dec i)))
@@ -371,16 +375,22 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
 
 (definterface to-cli-type (Fn [a] CLI.Type))
 
-(defmodule String (defn to-cli-type [s] (CLI.Type.Str s)))
+(defmodule String
+  (defn to-cli-type [s] (CLI.Type.Str s))
+  (implements to-cli-type String.to-cli-type))
 
-(defmodule Double (defn to-cli-type [f] (CLI.Type.Floating f)))
+(defmodule Double
+  (defn to-cli-type [f] (CLI.Type.Floating f))
+  (implements to-cli-type Double.to-cli-type))
 
-(defmodule Long (defn to-cli-type [l] (CLI.Type.Integer l)))
+(defmodule Long
+  (defn to-cli-type [l] (CLI.Type.Integer l))
+  (implements to-cli-type Long.to-cli-type))
 
 (doc CLI "is a simple CLI library for Carp.
 
 ```clojure
-(load \"https://veitheller.de/git/carpentry/cli@0.0.7\")
+(load \"git@github.com:carpentry-org/cli.carp@0.0.8\")
 
 (defn main []
   (let [p (=> (CLI.new @\"My super cool tool!\")
@@ -395,7 +405,7 @@ mesage is empty, `--help` was requested. If you don’t want to provide a
 ## Installation
 
 ```clojure
-(load \"https://veitheller.de/git/carpentry/cli@0.0.7\")
+(load \"git@github.com:carpentry-org/cli.carp@0.0.8\")
 ```
 
 ## Usage
