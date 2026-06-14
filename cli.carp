@@ -148,7 +148,7 @@
                 k (Pair.a e)
                 v (Pair.b (Pair.b e))]
             (when-do (or (= (Pair.a k) s) (= (Pair.b k) s))
-              (set! res (Maybe.unsafe-from @v))
+              (match @v (Maybe.Just val) (set! res val) (Maybe.Nothing) ())
               (break))))
         res))
 
@@ -210,16 +210,17 @@
   (hidden option-)
   (private option-)
   (defndynamic option- [t long short description required default-options]
-    (if (= (length default-options) 0)
-      (list 'CLI.Option.init
-            (list t)
-            (list 'copy long)
-            (list 'copy short)
-            (list 'copy description)
-            required
-            '(Maybe.Nothing)
-            '(Maybe.Nothing))
-      (if (= (length default-options) 1)
+    (cond
+      (= (length default-options) 0)
+        (list 'CLI.Option.init
+              (list t)
+              (list 'copy long)
+              (list 'copy short)
+              (list 'copy description)
+              required
+              '(Maybe.Nothing)
+              '(Maybe.Nothing))
+      (= (length default-options) 1)
         (list 'CLI.Option.init
               (list t)
               (list 'copy long)
@@ -228,17 +229,17 @@
               required
               (list 'Maybe.Just (list 'to-cli-type (car default-options)))
               '(Maybe.Nothing))
-        (list 'CLI.Option.init
-              (list t)
-              (list 'copy long)
-              (list 'copy short)
-              (list 'copy description)
-              required
-              (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-              (list 'Maybe.Just
-                    (list 'Array.copy-map
-                          '(ref (fn [e] (to-cli-type @e)))
-                          (cadr default-options)))))))
+      (list 'CLI.Option.init
+            (list t)
+            (list 'copy long)
+            (list 'copy short)
+            (list 'copy description)
+            required
+            (list 'Maybe.Just (list 'to-cli-type (car default-options)))
+            (list 'Maybe.Just
+                  (list 'Array.copy-map
+                        '(ref (fn [e] (to-cli-type @e)))
+                        (cadr default-options))))))
 
   (doc bool "creates a boolean option.")
   (defmacro bool [long short description]
@@ -287,10 +288,10 @@ Options:" (System.get-arg 0) &(options-str p) (Parser.description p))) (for [i
                   (Option.short arg)
                   (Option.description arg)))
           (when @(Option.required? arg) (IO.print " REQUIRED"))
-          (when (Maybe.just? (Option.default arg))
-            (IO.print
-              &(fmt " (default: %s)"
-                    &(str &(Maybe.unsafe-from @(Option.default arg))))))
+          (match @(Option.default arg)
+            (Maybe.Just default-val)
+              (IO.print &(fmt " (default: %s)" &(str &default-val)))
+            (Maybe.Nothing) ())
           (match @(Option.options arg)
             (Maybe.Just o)
               (IO.print &(fmt " (options: %s)" &(join ", " &(copy-map &str &o))))
@@ -356,16 +357,18 @@ message is empty, `--help` was requested. If you don’t want to provide a
                           (fmt "Required option missing: --%s" (Option.long o))))
                   (break))
               (Maybe.just? (Option.options o))
-                (let-do [opts (Maybe.unsafe-from @(Option.options o))]
-                  (unless-do (CmdMap.in? &values (Option.long o) &opts)
-                    (set! res
-                          (Result.Error
-                            (fmt
-                              "Option %s received an invalid option %s (Options are %s)"
-                              (Option.long o)
-                              &(CmdMap.get &values (Option.long o))
-                              &(join ", " &(copy-map &str &opts)))))
-                    (break)))
+                (match @(Option.options o)
+                  (Maybe.Just opts)
+                    (unless-do (CmdMap.in? &values (Option.long o) &opts)
+                      (set! res
+                            (Result.Error
+                              (fmt
+                                "Option %s received an invalid option %s (Options are %s)"
+                                (Option.long o)
+                                &(CmdMap.get &values (Option.long o))
+                                &(join ", " &(copy-map &str &opts)))))
+                      (break))
+                  (Maybe.Nothing) ())
               ()))))
       (match res
         (Result.Success _) (Result.Success (CmdMap.to-map &values))
