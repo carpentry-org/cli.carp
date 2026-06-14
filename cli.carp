@@ -18,13 +18,16 @@
         (None) (match @b (None) true _ false)
         (Integer i) (match @b (Integer j) (= i j) _ false)
         (Floating f) (match @b (Floating g) (= f g) _ false)
-        (Str s) (match @b (Str t) (= s t) _ false)))
+        (Str s) (match @b (Str t) (= s t) _ false)
+        (Boolean p) (match @b (Boolean q) (= p q) _ false)))
 
     (defn format [s t]
       (match @t
         (Integer i) (Long.format s i)
         (Floating f) (Double.format s f)
-        (Str s2) (format s &s2)))
+        (Str s2) (format s &s2)
+        (Boolean b) (String.format s &(Bool.str b))
+        (None) (String.format s "none")))
 
     (defn str [t]
       (match @t
@@ -59,8 +62,8 @@
   (defmodule Tag
     (defn to-type [t s]
       (match t
-        (Integer) (CLI.Type.Integer (Maybe.from 0l (Long.from-string s)))
-        (Floating) (CLI.Type.Floating (Maybe.from 0.0 (Double.from-string s)))
+        (Integer) (CLI.Type.Integer (Maybe.from (Long.from-string s) 0l))
+        (Floating) (CLI.Type.Floating (Maybe.from (Double.from-string s) 0.0))
         (Str) (CLI.Type.Str @s)
         (Boolean) (CLI.Type.Boolean (/= s "false"))))
 
@@ -149,17 +152,16 @@
               (break))))
         res))
 
-    (defn in? [m s vs]
+    (defn in? [m s allowed]
       (let-do [found true
                vals (values m)]
         (for [i 0 (length vals)]
           (let [e (unsafe-nth vals i)
-                k (Pair.a e)
-                v (Pair.b (Pair.b e))]
+                k (Pair.a e)]
             (when (or (= (Pair.a k) s) (= (Pair.b k) s))
-              (match @v
+              (match @(Pair.b (Pair.b e))
                 (Maybe.Just value)
-                  (do (set! found (contains? vs &value)) (break))
+                  (do (set! found (contains? allowed &value)) (break))
                 (Maybe.Nothing) (break)))))
         found))
 
@@ -246,7 +248,7 @@
   (defmacro str [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Str long short description required default-options))
 
-  (doc int "creates a integer option. The actual type is a `Long`.")
+  (doc int "creates an integer option. The actual type is a `Long`.")
   (defmacro int [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Integer
                  long
@@ -255,7 +257,7 @@
                  required
                  default-options))
 
-  (doc float "creates a integer option. The actual type is a `Double`.")
+  (doc float "creates a floating point option. The actual type is a `Double`.")
   (defmacro float [long short description required :rest default-options]
     (CLI.option- 'CLI.Tag.Floating
                  long
@@ -303,7 +305,7 @@ the long arguments to their values. Because values can be optional, they are
 returned as `Maybe`.
 
 Otherwise it will return an `Error` containing an error message. If that error
-mesage is empty, `--help` was requested. If you don’t want to provide a
+message is empty, `--help` was requested. If you don’t want to provide a
 `--help` feature, you can override that flag.")
   (defn parse [p]
     (let-do [values (Parser.values p)
