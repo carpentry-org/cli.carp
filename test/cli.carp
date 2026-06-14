@@ -63,64 +63,89 @@
 
   ; --- Type.str ---
 
-  (assert-equal test "42" &(CLI.Type.str &(CLI.Type.Integer 42l))
+  (assert-equal test
+    "42"
+    &(CLI.Type.str &(CLI.Type.Integer 42l))
     "Type.str integer")
 
-  (assert-equal test "3.140000" &(CLI.Type.str &(CLI.Type.Floating 3.14))
+  (assert-equal test
+    "3.140000"
+    &(CLI.Type.str &(CLI.Type.Floating 3.14))
     "Type.str float")
 
-  (assert-equal test "hello" &(CLI.Type.str &(CLI.Type.Str @"hello"))
+  (assert-equal test
+    "hello"
+    &(CLI.Type.str &(CLI.Type.Str @"hello"))
     "Type.str string")
 
-  (assert-equal test "true" &(CLI.Type.str &(CLI.Type.Boolean true))
+  (assert-equal test
+    "true"
+    &(CLI.Type.str &(CLI.Type.Boolean true))
     "Type.str boolean true")
 
-  (assert-equal test "false" &(CLI.Type.str &(CLI.Type.Boolean false))
+  (assert-equal test
+    "false"
+    &(CLI.Type.str &(CLI.Type.Boolean false))
     "Type.str boolean false")
 
-  (assert-equal test "none" &(CLI.Type.str &(CLI.Type.None))
-    "Type.str none")
+  (assert-equal test "none" &(CLI.Type.str &(CLI.Type.None)) "Type.str none")
 
   ; --- Type.format ---
 
-  (assert-equal test "42" &(CLI.Type.format "%ld" &(CLI.Type.Integer 42l))
+  (assert-equal test
+    "42"
+    &(CLI.Type.format "%ld" &(CLI.Type.Integer 42l))
     "Type.format integer")
 
-  (assert-equal test "3.140000" &(CLI.Type.format "%f" &(CLI.Type.Floating 3.14))
+  (assert-equal test
+    "3.140000"
+    &(CLI.Type.format "%f" &(CLI.Type.Floating 3.14))
     "Type.format float")
 
-  (assert-equal test "hello" &(CLI.Type.format "%s" &(CLI.Type.Str @"hello"))
+  (assert-equal test
+    "hello"
+    &(CLI.Type.format "%s" &(CLI.Type.Str @"hello"))
     "Type.format string")
 
-  (assert-equal test "true" &(CLI.Type.format "%s" &(CLI.Type.Boolean true))
+  (assert-equal test
+    "true"
+    &(CLI.Type.format "%s" &(CLI.Type.Boolean true))
     "Type.format boolean")
 
-  (assert-equal test "none" &(CLI.Type.format "%s" &(CLI.Type.None))
+  (assert-equal test
+    "none"
+    &(CLI.Type.format "%s" &(CLI.Type.None))
     "Type.format none")
 
   ; --- Type.to-* conversions ---
 
-  (assert-equal test 42
+  (assert-equal test
+    42
     (CLI.Type.to-int (CLI.Type.Integer 42l))
     "Type.to-int from Integer")
 
-  (assert-equal test 0
+  (assert-equal test
+    0
     (CLI.Type.to-int (CLI.Type.Str @"x"))
     "Type.to-int from non-Integer")
 
-  (assert-equal test 42l
+  (assert-equal test
+    42l
     (CLI.Type.to-long (CLI.Type.Integer 42l))
     "Type.to-long from Integer")
 
-  (assert-equal test 0l
+  (assert-equal test
+    0l
     (CLI.Type.to-long (CLI.Type.None))
     "Type.to-long from non-Integer")
 
-  (assert-equal test "hi"
+  (assert-equal test
+    "hi"
     &(CLI.Type.to-str (CLI.Type.Str @"hi"))
     "Type.to-str from Str")
 
-  (assert-equal test ""
+  (assert-equal test
+    ""
     &(CLI.Type.to-str (CLI.Type.Integer 1l))
     "Type.to-str from non-Str")
 
@@ -136,11 +161,13 @@
     (CLI.Type.to-bool (CLI.Type.Str @"true"))
     "Type.to-bool from non-Boolean")
 
-  (assert-equal test 0.0
+  (assert-equal test
+    0.0
     (CLI.Type.to-double (CLI.Type.Floating 0.0))
     "Type.to-double zero")
 
-  (assert-equal test 0.0
+  (assert-equal test
+    0.0
     (CLI.Type.to-double (CLI.Type.Integer 0l))
     "Type.to-double from non-Floating")
 
@@ -166,23 +193,28 @@
 
   ; --- Tag.to-type ---
 
-  (assert-equal test "42"
+  (assert-equal test
+    "42"
     &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.Integer) "42"))
     "Tag.to-type Integer parses")
 
-  (assert-equal test "hello"
+  (assert-equal test
+    "hello"
     &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.Str) "hello"))
     "Tag.to-type Str passes through")
 
-  (assert-equal test "true"
+  (assert-equal test
+    "true"
     &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.Boolean) "true"))
     "Tag.to-type Boolean true")
 
-  (assert-equal test "true"
+  (assert-equal test
+    "true"
     &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.Boolean) "yes"))
     "Tag.to-type Boolean non-false is true")
 
-  (assert-equal test "false"
+  (assert-equal test
+    "false"
     &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.Boolean) "false"))
     "Tag.to-type Boolean false")
 
@@ -193,65 +225,66 @@
       (CLI.CmdMap.contains? &m "x")
       "CmdMap.contains? empty map"))
 
-  (let [o (CLI.int "flag" "f" "desc" true)
-        m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+  (let-do [o (CLI.int "flag" "f" "desc" true)
+           m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+    (assert-true test
+      (CLI.CmdMap.contains? &m "flag")
+      "CmdMap.contains? by long name")
+
+    (assert-true test
+      (CLI.CmdMap.contains? &m "f")
+      "CmdMap.contains? by short name")
+
+    (assert-false test
+      (CLI.CmdMap.contains? &m "other")
+      "CmdMap.contains? missing key"))
+
+  (let-do [o (CLI.str "name"
+                      "n"
+                      "a name"
+                      false
+                      @"default"
+                      &[@"a" @"b" @"default"])
+           m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+    (assert-false test
+      (CLI.CmdMap.set? &m "name")
+      "CmdMap.set? returns false when no value set")
+
     (do
+      (CLI.CmdMap.put! &m "name" "hello")
       (assert-true test
-        (CLI.CmdMap.contains? &m "flag")
-        "CmdMap.contains? by long name")
-
-      (assert-true test
-        (CLI.CmdMap.contains? &m "f")
-        "CmdMap.contains? by short name")
-
-      (assert-false test
-        (CLI.CmdMap.contains? &m "other")
-        "CmdMap.contains? missing key")))
-
-  (let [o (CLI.str "name" "n" "a name" false @"default" &[@"a" @"b" @"default"])
-        m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (do
-      (assert-false test
         (CLI.CmdMap.set? &m "name")
-        "CmdMap.set? returns false when no value set")
+        "CmdMap.set? returns true after put!")))
 
-      (do
-        (CLI.CmdMap.put! &m "name" "hello")
-        (assert-true test
-          (CLI.CmdMap.set? &m "name")
-          "CmdMap.set? returns true after put!"))))
+  (let-do [o (CLI.int "count" "c" "a count" false)
+           m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+    (CLI.CmdMap.put! &m "count" "10")
+    (assert-equal test
+      "10"
+      &(CLI.Type.str &(CLI.CmdMap.get &m "count"))
+      "CmdMap.get retrieves value after put!"))
 
-  (let [o (CLI.int "count" "c" "a count" false)
-        m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (do
-      (CLI.CmdMap.put! &m "count" "10")
-      (assert-equal test "10"
-        &(CLI.Type.str &(CLI.CmdMap.get &m "count"))
-        "CmdMap.get retrieves value after put!")))
+  (let-do [o (CLI.str "mode" "m" "mode" false @"a" &[@"a" @"b"])
+           m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+    (CLI.CmdMap.put! &m "mode" "a")
+    (assert-true test
+      (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
+      "CmdMap.in? value in options")
 
-  (let [o (CLI.str "mode" "m" "mode" false @"a" &[@"a" @"b"])
-        m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (do
-      (CLI.CmdMap.put! &m "mode" "a")
-      (assert-true test
-        (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
-        "CmdMap.in? value in options")
+    (CLI.CmdMap.put! &m "mode" "x")
+    (assert-false test
+      (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
+      "CmdMap.in? value not in options"))
 
-      (CLI.CmdMap.put! &m "mode" "x")
-      (assert-false test
-        (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
-        "CmdMap.in? value not in options")))
+  (let-do [o (CLI.int "flag" "f" "desc" false)
+           m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
+    (assert-true test
+      (CLI.CmdMap.type? &m "flag" &(CLI.Tag.Integer))
+      "CmdMap.type? correct type")
 
-  (let [o (CLI.int "flag" "f" "desc" false)
-        m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (do
-      (assert-true test
-        (CLI.CmdMap.type? &m "flag" &(CLI.Tag.Integer))
-        "CmdMap.type? correct type")
-
-      (assert-false test
-        (CLI.CmdMap.type? &m "flag" &(CLI.Tag.Str))
-        "CmdMap.type? wrong type")))
+    (assert-false test
+      (CLI.CmdMap.type? &m "flag" &(CLI.Tag.Str))
+      "CmdMap.type? wrong type"))
 
   (let [o (CLI.bool "verbose" "v" "be verbose")
         m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
@@ -261,77 +294,69 @@
 
   ; --- CmdMap.to-map ---
 
-  (let [o1 (CLI.int "flag" "f" "desc" false)
-        o2 (CLI.str "name" "n" "desc" false)
-        m (CLI.CmdMap.put-empty
-            (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o1)
-            &o2)]
-    (do
-      (CLI.CmdMap.put! &m "flag" "5")
-      (let [result (CLI.CmdMap.to-map &m)]
-        (do
-          (assert-true test
-            (Map.contains? &result "flag")
-            "CmdMap.to-map includes set values")
+  (let-do [o1 (CLI.int "flag" "f" "desc" false)
+           o2 (CLI.str "name" "n" "desc" false)
+           m (CLI.CmdMap.put-empty
+             (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o1)
+             &o2)]
+    (CLI.CmdMap.put! &m "flag" "5")
+    (let-do [result (CLI.CmdMap.to-map &m)]
+      (assert-true test
+        (Map.contains? &result "flag")
+        "CmdMap.to-map includes set values")
 
-          (assert-false test
-            (Map.contains? &result "name")
-            "CmdMap.to-map excludes unset values")))))
+      (assert-false test
+        (Map.contains? &result "name")
+        "CmdMap.to-map excludes unset values")))
 
   ; --- Option construction ---
 
-  (let [o (CLI.int "port" "p" "port number" true)]
-    (do
-      (assert-equal test "port" (CLI.Option.long &o)
-        "Option int long name")
-      (assert-equal test "p" (CLI.Option.short &o)
-        "Option int short name")
-      (assert-true test @(CLI.Option.required? &o)
-        "Option int required")))
+  (let-do [o (CLI.int "port" "p" "port number" true)]
+    (assert-equal test "port" (CLI.Option.long &o) "Option int long name")
+    (assert-equal test "p" (CLI.Option.short &o) "Option int short name")
+    (assert-true test @(CLI.Option.required? &o) "Option int required"))
 
-  (let [o (CLI.str "name" "n" "a name" false @"default")]
-    (do
-      (assert-false test @(CLI.Option.required? &o)
-        "Option str not required")
-      (assert-true test (Maybe.just? (CLI.Option.default &o))
-        "Option str has default")))
+  (let-do [o (CLI.str "name" "n" "a name" false @"default")]
+    (assert-false test @(CLI.Option.required? &o) "Option str not required")
+    (assert-true test
+      (Maybe.just? (CLI.Option.default &o))
+      "Option str has default"))
 
-  (let [o (CLI.bool "verbose" "v" "verbose output")]
-    (do
-      (assert-equal test "verbose" (CLI.Option.long &o)
-        "Option bool long name")
-      (assert-false test @(CLI.Option.required? &o)
-        "Option bool not required")))
+  (let-do [o (CLI.bool "verbose" "v" "verbose output")]
+    (assert-equal test "verbose" (CLI.Option.long &o) "Option bool long name")
+    (assert-false test @(CLI.Option.required? &o) "Option bool not required"))
 
   (let [o (CLI.float "rate" "r" "rate" false 1.5)]
-    (assert-true test (Maybe.just? (CLI.Option.default &o))
+    (assert-true test
+      (Maybe.just? (CLI.Option.default &o))
       "Option float has default"))
 
   ; --- Parser construction ---
 
-  (let [p (=> (CLI.new @"test program")
-              (CLI.add &(CLI.int "port" "p" "port" true))
-              (CLI.add &(CLI.str "host" "h" "host" false)))]
-    (do
-      (assert-equal test "test program" (CLI.Parser.description &p)
-        "Parser description")
-      (assert-equal test 2 (Array.length (CLI.Parser.options &p))
-        "Parser has two options")))
+  (let-do [p (=> (CLI.new @"test program")
+                 (CLI.add &(CLI.int "port" "p" "port" true))
+                 (CLI.add &(CLI.str "host" "h" "host" false)))]
+    (assert-equal test
+      "test program"
+      (CLI.Parser.description &p)
+      "Parser description")
+    (assert-equal test
+      2
+      (Array.length (CLI.Parser.options &p))
+      "Parser has two options"))
 
   ; --- Parser.values (initial CmdMap) ---
 
-  (let [p (=> (CLI.new @"test")
-              (CLI.add &(CLI.int "a" "x" "desc" false))
-              (CLI.add &(CLI.str "b" "y" "desc" false)))
-        m (CLI.Parser.values &p)]
-    (do
-      (assert-true test
-        (CLI.CmdMap.contains? &m "a")
-        "Parser.values populates first option")
-      (assert-true test
-        (CLI.CmdMap.contains? &m "b")
-        "Parser.values populates second option")
-      (assert-false test
-        (CLI.CmdMap.set? &m "a")
-        "Parser.values options start unset")))
-)
+  (let-do [p (=> (CLI.new @"test")
+                 (CLI.add &(CLI.int "a" "x" "desc" false))
+                 (CLI.add &(CLI.str "b" "y" "desc" false)))
+           m (CLI.Parser.values &p)]
+    (assert-true test
+      (CLI.CmdMap.contains? &m "a")
+      "Parser.values populates first option")
+    (assert-true test
+      (CLI.CmdMap.contains? &m "b")
+      "Parser.values populates second option")
+    (assert-false test
+      (CLI.CmdMap.set? &m "a")
+      "Parser.values options start unset")))
