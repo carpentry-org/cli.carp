@@ -228,11 +228,12 @@
   (let-do [o (CLI.int "flag" "f" "desc" true)
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)
            t (assert-true test
-               (CLI.CmdMap.contains? &m "flag")
-               "CmdMap.contains? by long name")]
-    (set! t (assert-true &t
-      (CLI.CmdMap.contains? &m "f")
-      "CmdMap.contains? by short name"))
+             (CLI.CmdMap.contains? &m "flag")
+             "CmdMap.contains? by long name")]
+    (set! t
+          (assert-true &t
+            (CLI.CmdMap.contains? &m "f")
+            "CmdMap.contains? by short name"))
     (assert-false &t
       (CLI.CmdMap.contains? &m "other")
       "CmdMap.contains? missing key"))
@@ -240,8 +241,8 @@
   (let-do [o (CLI.str "name" "n" "a name" false)
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
     (let-do [t (assert-false test
-                 (CLI.CmdMap.set? &m "name")
-                 "CmdMap.set? returns false when no value set")]
+               (CLI.CmdMap.set? &m "name")
+               "CmdMap.set? returns false when no value set")]
       (CLI.CmdMap.put! &m "name" "hello")
       (assert-true &t
         (CLI.CmdMap.set? &m "name")
@@ -259,8 +260,10 @@
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
     (CLI.CmdMap.put! &m "mode" "a")
     (let-do [t (assert-true test
-                 (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
-                 "CmdMap.in? value in options")]
+               (CLI.CmdMap.in? &m
+                               "mode"
+                               &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
+               "CmdMap.in? value in options")]
       (CLI.CmdMap.put! &m "mode" "x")
       (assert-false &t
         (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
@@ -269,8 +272,8 @@
   (let-do [o (CLI.int "flag" "f" "desc" false)
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
     (let-do [t (assert-true test
-                 (CLI.CmdMap.type? &m "flag" &(CLI.Tag.TInteger))
-                 "CmdMap.type? correct type")]
+               (CLI.CmdMap.type? &m "flag" &(CLI.Tag.TInteger))
+               "CmdMap.type? correct type")]
       (assert-false &t
         (CLI.CmdMap.type? &m "flag" &(CLI.Tag.TStr))
         "CmdMap.type? wrong type")))
@@ -291,8 +294,8 @@
     (CLI.CmdMap.put! &m "flag" "5")
     (let-do [result (CLI.CmdMap.to-map &m)
              t (assert-true test
-                 (Map.contains? &result "flag")
-                 "CmdMap.to-map includes set values")]
+               (Map.contains? &result "flag")
+               "CmdMap.to-map includes set values")]
       (assert-false &t
         (Map.contains? &result "name")
         "CmdMap.to-map excludes unset values")))
@@ -300,18 +303,26 @@
   ; --- Option construction ---
 
   (let-do [o (CLI.int "port" "p" "port number" true)
-           t (assert-equal test "port" (CLI.Option.long &o) "Option int long name")]
+           t (assert-equal test
+             "port"
+             (CLI.Option.long &o)
+             "Option int long name")]
     (set! t (assert-equal &t "p" (CLI.Option.short &o) "Option int short name"))
     (assert-true &t @(CLI.Option.required? &o) "Option int required"))
 
   (let-do [o (CLI.str "name" "n" "a name" false @"default")
-           t (assert-false test @(CLI.Option.required? &o) "Option str not required")]
+           t (assert-false test
+             @(CLI.Option.required? &o)
+             "Option str not required")]
     (assert-true &t
       (Maybe.just? (CLI.Option.default &o))
       "Option str has default"))
 
   (let-do [o (CLI.bool "verbose" "v" "verbose output")
-           t (assert-equal test "verbose" (CLI.Option.long &o) "Option bool long name")]
+           t (assert-equal test
+             "verbose"
+             (CLI.Option.long &o)
+             "Option bool long name")]
     (assert-false &t @(CLI.Option.required? &o) "Option bool not required"))
 
   (let [o (CLI.float "rate" "r" "rate" false 1.5)]
@@ -325,9 +336,9 @@
                  (CLI.add &(CLI.int "port" "p" "port" true))
                  (CLI.add &(CLI.str "host" "h" "host" false)))]
     (let-do [t (assert-equal test
-                 "test program"
-                 (CLI.Parser.description &p)
-                 "Parser description")]
+               "test program"
+               (CLI.Parser.description &p)
+               "Parser description")]
       (assert-equal &t
         2
         (Array.length (CLI.Parser.options &p))
@@ -340,11 +351,12 @@
                  (CLI.add &(CLI.str "b" "y" "desc" false)))
            m (CLI.Parser.values &p)]
     (let-do [t (assert-true test
-                 (CLI.CmdMap.contains? &m "a")
-                 "Parser.values populates first option")]
-      (set! t (assert-true &t
-        (CLI.CmdMap.contains? &m "b")
-        "Parser.values populates second option"))
+               (CLI.CmdMap.contains? &m "a")
+               "Parser.values populates first option")]
+      (set! t
+            (assert-true &t
+              (CLI.CmdMap.contains? &m "b")
+              "Parser.values populates second option"))
       (assert-false &t
         (CLI.CmdMap.set? &m "a")
         "Parser.values options start unset"))))
