@@ -44,11 +44,23 @@ manually.
 Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string `false`.
 
+### Positional arguments
+
+Positional arguments are non-flag tokens matched by position. Build them with
+`CLI.pos-str`, `CLI.pos-int`, or `CLI.pos-float`:
+
+```clojure
+(CLI.pos-str <name> <description> <required?>)
+```
+
+Add them to the parser with `CLI.add-pos`. Flags and positionals can be
+interleaved freely on the command line.
+
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
 in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
-the long flag name to the value. The values are not in the map if they are
-unset.
+the long flag name (or positional argument name) to the value. The values are
+not in the map if they are unset.
 
 <hr/>
 

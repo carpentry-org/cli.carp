@@ -94,7 +94,7 @@
 
   (assert-equal test
     "42"
-    &(CLI.Type.format "%ld" &(CLI.Type.Integer 42l))
+    &(CLI.Type.format "%lld" &(CLI.Type.Integer 42l))
     "Type.format integer")
 
   (assert-equal test
@@ -343,6 +343,45 @@
         2
         (Array.length (CLI.Parser.options &p))
         "Parser has two options")))
+
+  ; --- Positional construction ---
+
+  (let-do [pos (CLI.pos-str "source" "source file" true)
+           t (assert-equal test
+             "source"
+             (CLI.Positional.name &pos)
+             "Positional str name")]
+    (set! t
+          (assert-equal &t
+            "source file"
+            (CLI.Positional.description &pos)
+            "Positional str description"))
+    (assert-true &t @(CLI.Positional.required? &pos) "Positional str required"))
+
+  (let [pos (CLI.pos-int "count" "item count" false)]
+    (assert-false test
+      @(CLI.Positional.required? &pos)
+      "Positional int optional"))
+
+  (let [pos (CLI.pos-float "rate" "processing rate" true)]
+    (assert-true test
+      @(CLI.Positional.required? &pos)
+      "Positional float required"))
+
+  ; --- Parser with positionals ---
+
+  (let-do [p (=> (CLI.new @"test")
+                 (CLI.add &(CLI.bool "verbose" "v" "verbose"))
+                 (CLI.add-pos &(CLI.pos-str "src" "source" true))
+                 (CLI.add-pos &(CLI.pos-str "dst" "destination" true)))]
+    (let-do [t (assert-equal test
+               1
+               (Array.length (CLI.Parser.options &p))
+               "Parser with positionals has one option")]
+      (assert-equal &t
+        2
+        (Array.length (CLI.Parser.positionals &p))
+        "Parser with positionals has two positionals")))
 
   ; --- Parser.values (initial CmdMap) ---
 

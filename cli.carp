@@ -1,3 +1,36 @@
+(hidden cli-option-)
+(defndynamic cli-option- [t long short description required default-options]
+  (cond
+    (= (length default-options) 0)
+      (list 'CLI.Option.init
+            (list t)
+            (list 'copy long)
+            (list 'copy short)
+            (list 'copy description)
+            required
+            '(Maybe.Nothing)
+            '(Maybe.Nothing))
+    (= (length default-options) 1)
+      (list 'CLI.Option.init
+            (list t)
+            (list 'copy long)
+            (list 'copy short)
+            (list 'copy description)
+            required
+            (list 'Maybe.Just (list 'to-cli-type (car default-options)))
+            '(Maybe.Nothing))
+    (list 'CLI.Option.init
+          (list t)
+          (list 'copy long)
+          (list 'copy short)
+          (list 'copy description)
+          required
+          (list 'Maybe.Just (list 'to-cli-type (car default-options)))
+          (list 'Maybe.Just
+                (list 'Array.copy-map
+                      '(ref (fn [e] (to-cli-type @e)))
+                      (cadr default-options))))))
+
 (defmodule CLI
   (use Array)
   (hidden Type)
@@ -24,16 +57,18 @@
         (Integer i) (Long.format s i)
         (Floating f) (Double.format s f)
         (Str s2) (String.format s &s2)
-        (Boolean b) (String.format s &(Bool.str b))
+        (Boolean b) (String.format s (if b "true" "false"))
         (None) (String.format s "none")))
     (implements format CLI.Type.format)
 
+    ; qualified X.str calls conflict with the CLI.str macro in the VM-era
+    ; compiler, so these use format instead
     (defn str [t]
       (match @t
-        (Type.Integer i) (Long.str i)
-        (Type.Floating f) (Double.str f)
+        (Type.Integer i) (Long.format "%lld" i)
+        (Type.Floating f) (Double.format "%g" f)
         (Type.Str s) s
-        (Type.Boolean b) (Bool.str b)
+        (Type.Boolean b) (if b @"true" @"false")
         (Type.None) @"none"))
     (implements str CLI.Type.str)
 
@@ -87,10 +122,21 @@
      default (Maybe CLI.Type)
      options (Maybe (Array CLI.Type))])
 
+  (doc Positional "is the positional argument type. To construct a `Positional`,
+please use [`pos-str`](#pos-str), [`pos-int`](#pos-int), or
+[`pos-float`](#pos-float).")
+  (deftype Positional
+    [type- CLI.Tag
+     name String
+     description String
+     required? Bool])
+
   (doc Parser "is the parser type. To construct a `Parser`, please use
 [`new`](#new).")
-  (deftype Parser [description String
-                   options (Array CLI.Option)])
+  (deftype Parser
+    [description String
+     options (Array CLI.Option)
+     positionals (Array CLI.Positional)])
 
   ; this is pretty brutal. It’s a (Pair (Pair <long> <short>) (<tag> <value>))
   ; we need to make our own map because long or short might match and both are
@@ -191,70 +237,75 @@
               (break))))))
 
     (defn to-map [m]
-      (reduce
-        &(fn [a v]
-          (match @(Pair.b (Pair.b v))
-            (Maybe.Just e) (Map.put a (Pair.a (Pair.a v)) &e)
-            (Maybe.Nothing) a))
-        {}
-        (values m))))
+      (let-do [result (the (Map String CLI.Type) {})
+               vs (values m)]
+        (for [i 0 (Array.length vs)]
+          (let [v (Array.unsafe-nth vs i)
+                key (Pair.a (Pair.a v))
+                mb (Pair.b (Pair.b v))]
+            (match @mb
+              (Maybe.Just e) (set! result (Map.put result key &e))
+              (Maybe.Nothing) ())))
+        result)))
 
   (defmodule Parser
     (defn values [p]
       (Array.reduce &CLI.CmdMap.put-empty (CLI.CmdMap.new) (options p))))
 
   (doc new "creates a new `Parser` with a program description `descr`.")
-  (defn new [descr] (Parser.init descr []))
+  (defn new [descr] (Parser.init descr [] []))
 
   (doc add "adds an `Option` `opt` to the `Parser` `p`.")
   (defn add [p opt]
     (Parser.update-options p &(fn [options] (push-back options @opt))))
 
-  (hidden option-)
-  (private option-)
-  (defndynamic option- [t long short description required default-options]
-    (cond
-      (= (length default-options) 0)
-        (list 'CLI.Option.init
-              (list t)
-              (list 'copy long)
-              (list 'copy short)
-              (list 'copy description)
-              required
-              '(Maybe.Nothing)
-              '(Maybe.Nothing))
-      (= (length default-options) 1)
-        (list 'CLI.Option.init
-              (list t)
-              (list 'copy long)
-              (list 'copy short)
-              (list 'copy description)
-              required
-              (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-              '(Maybe.Nothing))
-      (list 'CLI.Option.init
-            (list t)
-            (list 'copy long)
-            (list 'copy short)
-            (list 'copy description)
-            required
-            (list 'Maybe.Just (list 'to-cli-type (car default-options)))
-            (list 'Maybe.Just
-                  (list 'Array.copy-map
-                        '(ref (fn [e] (to-cli-type @e)))
-                        (cadr default-options))))))
+  (doc add-pos "adds a `Positional` argument `pos` to the `Parser` `p`.")
+  (defn add-pos [p pos]
+    (Parser.update-positionals p
+                               &(fn [positionals] (push-back positionals @pos))))
+
+  (doc pos-str "creates a positional string argument.")
+  (defmacro pos-str [n desc req]
+    (list 'CLI.Positional.init
+          '(CLI.Tag.TStr)
+          (list 'copy n)
+          (list 'copy desc)
+          req))
+
+  (doc pos-int "creates a positional integer argument.")
+  (defmacro pos-int [n desc req]
+    (list 'CLI.Positional.init
+          '(CLI.Tag.TInteger)
+          (list 'copy n)
+          (list 'copy desc)
+          req))
+
+  (doc pos-float "creates a positional floating point argument.")
+  (defmacro pos-float [n desc req]
+    (list 'CLI.Positional.init
+          '(CLI.Tag.TFloating)
+          (list 'copy n)
+          (list 'copy desc)
+          req))
 
   (doc bool "creates a boolean option.")
   (defmacro bool [long short description]
-    (CLI.option- 'CLI.Tag.TBoolean long short description false []))
+    (list 'CLI.Option.init
+          '(CLI.Tag.TBoolean)
+          (list 'copy long)
+          (list 'copy short)
+          (list 'copy description)
+          false
+          '(Maybe.Nothing)
+          '(Maybe.Nothing)))
 
   (doc str "creates a string option.")
   (defmacro str [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.TStr long short description required default-options))
+    (cli-option- 'CLI.Tag.TStr long short description required default-options))
 
   (doc int "creates an integer option. The actual type is a `Long`.")
   (defmacro int [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.TInteger
+    (cli-option- 'CLI.Tag.TInteger
                  long
                  short
                  description
@@ -263,7 +314,7 @@
 
   (doc float "creates a floating point option. The actual type is a `Double`.")
   (defmacro float [long short description required :rest default-options]
-    (CLI.option- 'CLI.Tag.TFloating
+    (cli-option- 'CLI.Tag.TFloating
                  long
                  short
                  description
@@ -273,10 +324,17 @@
   (private options-str)
   (hidden options-str)
   (defn options-str [p]
-    (join " "
-          &(copy-map
-            &(fn [o] (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
-            (Parser.options p))))
+    (let-do [parts (copy-map
+               &(fn [o] (fmt "[-%s | --%s]" (Option.short o) (Option.long o)))
+               (Parser.options p))]
+      (for [i 0 (length (Parser.positionals p))]
+        (let [pos (unsafe-nth (Parser.positionals p) i)]
+          (set! parts
+                (push-back parts
+                           (if @(Positional.required? pos)
+                             (fmt "<%s>" (Positional.name pos))
+                             (fmt "[%s]" (Positional.name pos)))))))
+      (join " " &parts)))
 
   (doc usage "takes a `Parser` `p` and prints its usage information.")
   (defn usage [p] (do (IO.println &(fmt "usage: %s %s
@@ -293,29 +351,51 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
           (when @(Option.required? arg) (IO.print " REQUIRED"))
           (match @(Option.default arg)
             (Maybe.Just default-val)
-              (let [d (CLI.Type.str &default-val)]
-                (IO.print &(fmt " (default: %s)" &d)))
+              (IO.print
+                &(fmt " (default: %s)" &(CLI.Type.format "%s" &default-val)))
             (Maybe.Nothing) ())
           (match @(Option.options arg)
             (Maybe.Just o)
-              (IO.print &(fmt " (options: %s)" &(join ", " &(copy-map &str &o))))
+              (IO.print
+                &(fmt " (options: %s)"
+                      &(join ", " &(copy-map &(fn [v] (fmt "%s" v)) &o))))
             (Maybe.Nothing) ())
           (IO.println ""))) (IO.println
-        "  --help|-h: print this help message and exit.")))
+        "  --help|-h: print this help message and exit.") (when-do (> (length (Parser.positionals p))
+                                                                      0)
+        (IO.println "Positional arguments:")
+        (for [i 0 (length (Parser.positionals p))]
+          (let-do [pos (unsafe-nth (Parser.positionals p) i)]
+            (IO.print
+              &(if @(Positional.required? pos)
+                (fmt "  <%s>: %s REQUIRED"
+                     (Positional.name pos)
+                     (Positional.description pos))
+                (fmt "  [%s]: %s"
+                     (Positional.name pos)
+                     (Positional.description pos))))
+            (IO.println ""))))))
 
   (doc parse "parses the arguments as specified by the parser `p`.
 
 If everything goes right, it will return a `Success` containing a map from
-the long arguments to their values. Because values can be optional, they are
-returned as `Maybe`.
+the long arguments (and positional argument names) to their values.
+
+Non-flag tokens are matched to positional arguments in the order they were
+added. Flags and positionals can be interleaved freely.
 
 Otherwise it will return an `Error` containing an error message. If that error
 message is empty, `--help` was requested. If you don’t want to provide a
 `--help` feature, you can override that flag.")
   (defn parse [p]
     (let-do [values (Parser.values p)
-             res (Result.Success @p)
-             options (Parser.options p)]
+             res (the (Result Bool String) (Result.Success true))
+             options (Parser.options p)
+             positionals (Parser.positionals p)
+             pos-idx 0
+             pos-results (Array.copy-map
+               &(fn [_p] (the (Maybe CLI.Type) (Maybe.Nothing)))
+               positionals)]
       (for [i 1 (StaticArray.length &System.args)]
         (let [x (StaticArray.unsafe-nth &System.args i)]
           (if (or (starts-with? x "--") (starts-with? x "-"))
@@ -348,9 +428,15 @@ message is empty, `--help` was requested. If you don’t want to provide a
                 (do
                   (set! res (Result.Error (fmt "Unknown option: %s" x)))
                   (break))))
-            (do
-              (set! res (Result.Error (fmt "Unexpected argument: %s" x)))
-              (break)))))
+            (if (< pos-idx (length positionals))
+              (let-do [pos (unsafe-nth positionals pos-idx)]
+                (Array.aset! &pos-results
+                             pos-idx
+                             (Maybe.Just (Tag.to-type @(Positional.type- pos) x)))
+                (set! pos-idx (Int.inc pos-idx)))
+              (do
+                (set! res (Result.Error (fmt "Unexpected argument: %s" x)))
+                (break))))))
       (when (Result.success? &res)
         (for [i 0 (length options)]
           (let [o (unsafe-nth options i)]
@@ -372,12 +458,33 @@ message is empty, `--help` was requested. If you don’t want to provide a
                                 "Option %s received an invalid option %s (Options are %s)"
                                 (Option.long o)
                                 &(CmdMap.get &values (Option.long o))
-                                &(join ", " &(copy-map &str &opts)))))
+                                &(join ", "
+                                       &(copy-map &(fn [v] (fmt "%s" v)) &opts)))))
                       (break))
                   (Maybe.Nothing) ())
               ()))))
+      (when (Result.success? &res)
+        (for [i 0 (length positionals)]
+          (let [pos (unsafe-nth positionals i)]
+            (when-do (and @(Positional.required? pos)
+                          (not (Maybe.just? (unsafe-nth &pos-results i))))
+              (set! res
+                    (Result.Error
+                      (fmt "Required argument missing: <%s>"
+                           (Positional.name pos))))
+              (break)))))
       (match res
-        (Result.Success _) (Result.Success (CmdMap.to-map &values))
+        (Result.Success _)
+          (let-do [m (CmdMap.to-map &values)]
+            (for [i 0 (length positionals)]
+              (match @(unsafe-nth &pos-results i)
+                (Maybe.Just val)
+                  (set! m
+                        (Map.put m
+                                 (Positional.name (unsafe-nth positionals i))
+                                 &val))
+                (Maybe.Nothing) ()))
+            (Result.Success m))
         (Result.Error x) (Result.Error x)))))
 
 (definterface to-cli-type (Fn [a] CLI.Type))
@@ -438,8 +545,20 @@ manually.
 Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string `false`.
 
+## Positional Arguments
+
+Positional arguments are non-flag tokens matched by position. Build them with
+`CLI.pos-str`, `CLI.pos-int`, or `CLI.pos-float`:
+
+```clojure
+(CLI.pos-str <name> <description> <required?>)
+```
+
+Add them to the parser with `CLI.add-pos`. Flags and positionals can be
+interleaved freely on the command line.
+
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
 in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
-the long flag name to the value. The values are not in the map if they are
-unset.")
+the long flag name (or positional argument name) to the value. The values are
+not in the map if they are unset.")
