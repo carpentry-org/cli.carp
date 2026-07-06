@@ -35,6 +35,11 @@
                                             Parser
                                         </a>
                                     </li>
+                                    <li>
+                                        <a href="CLI.Positional.html">
+                                            Positional
+                                        </a>
+                                    </li>
                                 </ul>
                             </details>
                         </li>
@@ -47,7 +52,7 @@
                 </h1>
                 <div class="module-description">
                     <p>is a simple CLI library for Carp.</p>
-<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.0.8&quot;)
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.1.0&quot;)
 
 (defn main []
   (let [p (=&gt; (CLI.new @&quot;My super cool tool!&quot;)
@@ -59,7 +64,7 @@
       (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
 </code></pre>
 <h2>Installation</h2>
-<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.0.8&quot;)
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.1.0&quot;)
 </code></pre>
 <h2>Usage</h2>
 <p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
@@ -78,11 +83,18 @@ set it to <code>(Maybe.Nothing)</code> if you want to make sure that it has to b
 manually.</p>
 <p>Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string <code>false</code>.</p>
+<h2>Positional Arguments</h2>
+<p>Positional arguments are non-flag tokens matched by position. Build them with
+<code>CLI.pos-str</code>, <code>CLI.pos-int</code>, or <code>CLI.pos-float</code>:</p>
+<pre><code class="language-clojure">(CLI.pos-str &lt;name&gt; &lt;description&gt; &lt;required?&gt;)
+</code></pre>
+<p>Add them to the parser with <code>CLI.add-pos</code>. Flags and positionals can be
+interleaved freely on the command line.</p>
 <p>Once you’re done building your flag structure, you can run <code>CLI.parse</code>. It
 will not abort the program on error, instead it will tell you what went wrong
 in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> contains a <code>Map</code> from
-the long flag name to the value. The values are not in the map if they are
-unset.</p>
+the long flag name (or positional argument name) to the value. The values are
+not in the map if they are unset.</p>
 
                 </div>
                 <div class="binder">
@@ -132,6 +144,30 @@ unset.</p>
                     </p>
                 </div>
                 <div class="binder">
+                    <a class="anchor" href="#Positional">
+                        <h3 id="Positional">
+                            <a href="CLI.Positional.html">
+                                Positional
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>is the positional argument type. To construct a <code>Positional</code>,
+please use <a href="#pos-str"><code>pos-str</code></a>, <a href="#pos-int"><code>pos-int</code></a>, or
+<a href="#pos-float"><code>pos-float</code></a>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
                     <a class="anchor" href="#add">
                         <h3 id="add">
                             add
@@ -148,6 +184,26 @@ unset.</p>
                     </pre>
                     <p class="doc">
                         <p>adds an <code>Option</code> <code>opt</code> to the <code>Parser</code> <code>p</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#add-pos">
+                        <h3 id="add-pos">
+                            add-pos
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Parser, (Ref CLI.Positional a)] CLI.Parser)
+                    </p>
+                    <pre class="args">
+                        (add-pos p pos)
+                    </pre>
+                    <p class="doc">
+                        <p>adds a <code>Positional</code> argument <code>pos</code> to the <code>Parser</code> <code>p</code>.</p>
 
                     </p>
                 </div>
@@ -249,11 +305,72 @@ unset.</p>
                     <p class="doc">
                         <p>parses the arguments as specified by the parser <code>p</code>.</p>
 <p>If everything goes right, it will return a <code>Success</code> containing a map from
-the long arguments to their values. Because values can be optional, they are
-returned as <code>Maybe</code>.</p>
+the long arguments (and positional argument names) to their values.</p>
+<p>Non-flag tokens are matched to positional arguments in the order they were
+added. Flags and positionals can be interleaved freely.</p>
 <p>Otherwise it will return an <code>Error</code> containing an error message. If that error
 message is empty, <code>--help</code> was requested. If you don’t want to provide a
 <code>--help</code> feature, you can override that flag.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#pos-float">
+                        <h3 id="pos-float">
+                            pos-float
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (pos-float n desc req)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a positional floating point argument.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#pos-int">
+                        <h3 id="pos-int">
+                            pos-int
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (pos-int n desc req)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a positional integer argument.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#pos-str">
+                        <h3 id="pos-str">
+                            pos-str
+                        </h3>
+                    </a>
+                    <div class="description">
+                        macro
+                    </div>
+                    <p class="sig">
+                        Macro
+                    </p>
+                    <pre class="args">
+                        (pos-str n desc req)
+                    </pre>
+                    <p class="doc">
+                        <p>creates a positional string argument.</p>
 
                     </p>
                 </div>

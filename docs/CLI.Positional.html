@@ -48,11 +48,12 @@
             </div>
             <div class="module">
                 <h1>
-                    CLI.Parser
+                    CLI.Positional
                 </h1>
                 <div class="module-description">
-                    <p>is the parser type. To construct a <code>Parser</code>, please use
-<a href="#new"><code>new</code></a>.</p>
+                    <p>is the positional argument type. To construct a <code>Positional</code>,
+please use <a href="#pos-str"><code>pos-str</code></a>, <a href="#pos-int"><code>pos-int</code></a>, or
+<a href="#pos-float"><code>pos-float</code></a>.</p>
 
                 </div>
                 <div class="binder">
@@ -65,13 +66,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] CLI.Parser)
+                        (Fn [(Ref CLI.Positional a)] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>copies a <code>Parser</code>.</p>
+                        <p>copies a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -85,13 +86,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser] ())
+                        (Fn [CLI.Positional] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>deletes a <code>Parser</code>. Should usually not be called manually.</p>
+                        <p>deletes a <code>Positional</code>. Should usually not be called manually.</p>
 
                     </p>
                 </div>
@@ -105,13 +106,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref String a))
+                        (Fn [(Ref CLI.Positional a)] (Ref String a))
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>gets the <code>description</code> property of a <code>Parser</code>.</p>
+                        <p>gets the <code>description</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -125,53 +126,33 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [String, (Array CLI.Option), (Array CLI.Positional)] CLI.Parser)
+                        (Fn [CLI.Tag, String, String, Bool] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>creates a <code>Parser</code>.</p>
+                        <p>creates a <code>Positional</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#options">
-                        <h3 id="options">
-                            options
+                    <a class="anchor" href="#name">
+                        <h3 id="name">
+                            name
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref (Array CLI.Option) a))
+                        (Fn [(Ref CLI.Positional a)] (Ref String a))
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>gets the <code>options</code> property of a <code>Parser</code>.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#positionals">
-                        <h3 id="positionals">
-                            positionals
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref (Array CLI.Positional) a))
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>gets the <code>positionals</code> property of a <code>Parser</code>.</p>
+                        <p>gets the <code>name</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -185,13 +166,33 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] String)
+                        (Fn [(Ref CLI.Positional a)] String)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>converts a <code>Parser</code> to a string.</p>
+                        <p>converts a <code>Positional</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#required?">
+                        <h3 id="required?">
+                            required?
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Positional a)] (Ref Bool a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>required?</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -205,13 +206,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, String] CLI.Parser)
+                        (Fn [CLI.Positional, String] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>description</code> property of a <code>Parser</code>.</p>
+                        <p>sets the <code>description</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -225,93 +226,133 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a), String] ())
+                        (Fn [(Ref CLI.Positional a), String] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>description</code> property of a <code>Parser</code> in place.</p>
+                        <p>sets the <code>description</code> property of a <code>Positional</code> in place.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#set-options">
-                        <h3 id="set-options">
-                            set-options
+                    <a class="anchor" href="#set-name">
+                        <h3 id="set-name">
+                            set-name
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Array CLI.Option)] CLI.Parser)
+                        (Fn [CLI.Positional, String] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>options</code> property of a <code>Parser</code>.</p>
+                        <p>sets the <code>name</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#set-options!">
-                        <h3 id="set-options!">
-                            set-options!
+                    <a class="anchor" href="#set-name!">
+                        <h3 id="set-name!">
+                            set-name!
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a), (Array CLI.Option)] ())
+                        (Fn [(Ref CLI.Positional a), String] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>options</code> property of a <code>Parser</code> in place.</p>
+                        <p>sets the <code>name</code> property of a <code>Positional</code> in place.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#set-positionals">
-                        <h3 id="set-positionals">
-                            set-positionals
+                    <a class="anchor" href="#set-required?">
+                        <h3 id="set-required?">
+                            set-required?
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Array CLI.Positional)] CLI.Parser)
+                        (Fn [CLI.Positional, Bool] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>positionals</code> property of a <code>Parser</code>.</p>
+                        <p>sets the <code>required?</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#set-positionals!">
-                        <h3 id="set-positionals!">
-                            set-positionals!
+                    <a class="anchor" href="#set-required?!">
+                        <h3 id="set-required?!">
+                            set-required?!
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a), (Array CLI.Positional)] ())
+                        (Fn [(Ref CLI.Positional a), Bool] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>positionals</code> property of a <code>Parser</code> in place.</p>
+                        <p>sets the <code>required?</code> property of a <code>Positional</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-type-">
+                        <h3 id="set-type-">
+                            set-type-
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Positional, CLI.Tag] CLI.Positional)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>type-</code> property of a <code>Positional</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-type-!">
+                        <h3 id="set-type-!">
+                            set-type-!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Positional a), CLI.Tag] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>type-</code> property of a <code>Positional</code> in place.</p>
 
                     </p>
                 </div>
@@ -325,13 +366,33 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] String)
+                        (Fn [(Ref CLI.Positional a)] String)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>converts a <code>Parser</code> to a string.</p>
+                        <p>converts a <code>Positional</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#type-">
+                        <h3 id="type-">
+                            type-
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Positional a)] (Ref CLI.Tag a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>type-</code> property of a <code>Positional</code>.</p>
 
                     </p>
                 </div>
@@ -345,73 +406,74 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [String] String a) b)] CLI.Parser)
+                        (Fn [CLI.Positional, (Ref (Fn [String] String a) b)] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>updates the <code>description</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+                        <p>updates the <code>description</code> property of a <code>CLI.Positional</code> using a function <code>f</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#update-options">
-                        <h3 id="update-options">
-                            update-options
+                    <a class="anchor" href="#update-name">
+                        <h3 id="update-name">
+                            update-name
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [(Array CLI.Option)] (Array CLI.Option) a) b)] CLI.Parser)
+                        (Fn [CLI.Positional, (Ref (Fn [String] String a) b)] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>updates the <code>options</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+                        <p>updates the <code>name</code> property of a <code>CLI.Positional</code> using a function <code>f</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#update-positionals">
-                        <h3 id="update-positionals">
-                            update-positionals
+                    <a class="anchor" href="#update-required?">
+                        <h3 id="update-required?">
+                            update-required?
                         </h3>
                     </a>
                     <div class="description">
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [(Array CLI.Positional)] (Array CLI.Positional) a) b)] CLI.Parser)
+                        (Fn [CLI.Positional, (Ref (Fn [Bool] Bool a) b)] CLI.Positional)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>updates the <code>positionals</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+                        <p>updates the <code>required?</code> property of a <code>CLI.Positional</code> using a function <code>f</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#values">
-                        <h3 id="values">
-                            values
+                    <a class="anchor" href="#update-type-">
+                        <h3 id="update-type-">
+                            update-type-
                         </h3>
                     </a>
                     <div class="description">
-                        defn
+                        instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] CLI.CmdMap)
+                        (Fn [CLI.Positional, (Ref (Fn [CLI.Tag] CLI.Tag a) b)] CLI.Positional)
                     </p>
-                    <pre class="args">
-                        (values p)
-                    </pre>
-                    <p class="doc">
+                    <span>
                         
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>type-</code> property of a <code>CLI.Positional</code> using a function <code>f</code>.</p>
+
                     </p>
                 </div>
             </div>

@@ -3,7 +3,7 @@
 A simple CLI library for Carp.
 
 ```clojure
-(load "git@github.com:carpentry-org/cli.carp@0.0.8")
+(load "git@github.com:carpentry-org/cli.carp@0.1.0")
 
 (defn main []
   (let [p (=> (CLI.new @"My super cool tool!")
@@ -18,7 +18,7 @@ A simple CLI library for Carp.
 ## Installation
 
 ```clojure
-(load "git@github.com:carpentry-org/cli.carp@0.0.8")
+(load "git@github.com:carpentry-org/cli.carp@0.1.0")
 ```
 
 ## Usage
