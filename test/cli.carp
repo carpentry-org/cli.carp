@@ -2,6 +2,22 @@
 (load "Test.carp")
 (use Test)
 
+; a small git-like app reused by the subcommand tests below
+
+(def commit-parser
+  (=> (CLI.new @"record changes")
+      (CLI.add &(CLI.str "message" "m" "commit message" true))))
+
+(def push-parser
+  (=> (CLI.new @"upload changes")
+      (CLI.add &(CLI.bool "force" "f" "force the push"))
+      (CLI.add-pos &(CLI.pos-str "remote" "the remote" false))))
+
+(def git
+  (=> (CLI.App.new @"a tiny git")
+      (CLI.App.add "commit" &commit-parser)
+      (CLI.App.add "push" &push-parser)))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -398,4 +414,145 @@
               "Parser.values populates second option"))
       (assert-false &t
         (CLI.CmdMap.set? &m "a")
-        "Parser.values options start unset"))))
+        "Parser.values options start unset")))
+
+  ; ---------------------------------------------------------------------------
+  ; parse-from (explicit-array parsing, and regression coverage for the flat
+  ; parser: a plain no-subcommand Parser must behave exactly as before)
+  ; ---------------------------------------------------------------------------
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.int "flag" "f" "a flag" true))
+                 (CLI.add &(CLI.str "name" "n" "a name" false @"anon")))
+           res (CLI.parse-from &p &[@"--flag" @"5" @"--name" @"veit"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "5"
+                   &(CLI.Type.str &(Map.get &m "flag"))
+                   "parse-from reads an int option")]
+          (assert-equal &t
+            "veit"
+            &(CLI.Type.str &(Map.get &m "name"))
+            "parse-from reads a string option"))
+      (Result.Error _)
+        (assert-true test false "parse-from unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "src" "source" true)))
+           res (CLI.parse-from &p &[@"in.txt"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "in.txt"
+          &(CLI.Type.str &(Map.get &m "src"))
+          "parse-from reads a positional argument")
+      (Result.Error _)
+        (assert-true test false "parse-from positional unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.int "flag" "f" "a flag" true)))
+           res (CLI.parse-from &p &[])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Required option missing: --flag"
+          &e
+          "parse-from reports a missing required option")
+      (Result.Success _)
+        (assert-true test false "parse-from should have errored")))
+
+  ; ---------------------------------------------------------------------------
+  ; App / subcommands
+  ; ---------------------------------------------------------------------------
+
+  (assert-equal test
+    2
+    (Array.length (CLI.App.commands &git))
+    "App registers two subcommands")
+
+  (let-do [t (assert-true test
+             (CLI.App.has? &git "commit")
+             "App.has? finds a registered subcommand")]
+    (assert-false &t
+      (CLI.App.has? &git "nope")
+      "App.has? rejects an unknown subcommand"))
+
+  (let-do [res (CLI.App.parse-from &git &[@"commit" @"--message" @"hello"])]
+    (match res
+      (Result.Success pair)
+        (let-do [t (assert-equal test
+                   "commit"
+                   (Pair.a &pair)
+                   "App dispatches to the commit subcommand")]
+          (assert-equal &t
+            "hello"
+            &(CLI.Type.str &(Map.get (Pair.b &pair) "message"))
+            "commit subcommand parses its own option"))
+      (Result.Error _)
+        (assert-true test false "commit dispatch unexpectedly errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"push" @"origin" @"--force"])]
+    (match res
+      (Result.Success pair)
+        (let-do [t (assert-equal test
+                   "push"
+                   (Pair.a &pair)
+                   "App dispatches to the push subcommand")]
+          (set! t
+                (assert-equal &t
+                  "origin"
+                  &(CLI.Type.str &(Map.get (Pair.b &pair) "remote"))
+                  "push subcommand parses its positional"))
+          (assert-equal &t
+            "true"
+            &(CLI.Type.str &(Map.get (Pair.b &pair) "force"))
+            "push subcommand parses its boolean flag"))
+      (Result.Error _)
+        (assert-true test false "push dispatch unexpectedly errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"frobnicate"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Unknown subcommand: frobnicate"
+          &e
+          "App reports an unknown subcommand")
+      (Result.Success _)
+        (assert-true test false "unknown subcommand should have errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "No subcommand given."
+          &e
+          "App reports a missing subcommand")
+      (Result.Success _)
+        (assert-true test false "missing subcommand should have errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"commit"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Required option missing: --message"
+          &e
+          "a subcommand’s own parse error propagates")
+      (Result.Success _)
+        (assert-true test false "missing required option should have errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"--help"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test "" &e "App surfaces --help as an empty error")
+      (Result.Success _)
+        (assert-true test false "--help should have errored (empty)")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"-x"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Expected a subcommand, got option: -x"
+          &e
+          "App rejects a leading option that is not a subcommand")
+      (Result.Success _)
+        (assert-true test false "leading option should have errored"))))

@@ -62,6 +62,46 @@ in a `Result.Error`. If it succeeds, the `Result.Success` contains a `Map` from
 the long flag name (or positional argument name) to the value. The values are
 not in the map if they are unset.
 
+### Subcommands
+
+Bigger tools tend to be shaped like `git commit` / `git push` or `docker run` /
+`docker build`: a program name followed by a subcommand, where each subcommand
+is an independent parser with its own description, options, and positionals.
+`CLI.App` gives you exactly that, layered on top of the `Parser` you already
+know. It is purely additive — a plain `Parser` still works exactly as before.
+
+Build each subcommand as a normal `Parser`, then register it on an `App` under a
+name with `CLI.App.add`:
+
+```clojure
+(defn main []
+  (let [commit (=> (CLI.new @"record changes to the repository")
+                   (CLI.add &(CLI.str "message" "m" "commit message" true)))
+        push   (=> (CLI.new @"update remote refs")
+                   (CLI.add &(CLI.bool "force" "f" "force the push"))
+                   (CLI.add-pos &(CLI.pos-str "remote" "the remote to push to" false)))
+        app    (=> (CLI.App.new @"a tiny git")
+                   (CLI.App.add "commit" &commit)
+                   (CLI.App.add "push" &push))]
+    (match (CLI.App.parse &app)
+      (Result.Success chosen)
+        (println* "ran " (Pair.a &chosen) " with "
+                  &(Map.length (Pair.b &chosen)) " values")
+      (Result.Error msg)
+        (if (empty? &msg) (CLI.App.usage &app) (IO.errorln &msg)))))
+```
+
+`CLI.App.parse` (and its explicit-array sibling `CLI.App.parse-from`) reads the
+first token to pick the subcommand and hands the remaining tokens to that
+subcommand’s parser. On success it returns a `Pair` of the chosen subcommand
+name and its parsed value `Map` — so you learn both *which* command ran and
+*what* it was given. On error it returns a message: an empty one means `--help`
+was requested (just like the flat parser), otherwise it describes a missing
+subcommand, an unknown subcommand, or the subcommand’s own parse error.
+
+`CLI.App.usage` lists the registered subcommands with their descriptions, and
+`CLI.App.usage-for` prints the detailed usage of a single subcommand.
+
 <hr/>
 
 Have fun!
