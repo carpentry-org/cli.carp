@@ -376,20 +376,14 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                      (Positional.description pos))))
             (IO.println ""))))))
 
-  (doc parse-from "parses the argument array `args` as specified by the parser
-`p`. This is the workhorse behind [`parse`](#parse); reach for it directly when
-the arguments come from somewhere other than the process arguments — for example
-a subcommand’s remaining tokens (see [`App`](#app)) or a test.
-
-If everything goes right, it will return a `Success` containing a map from
-the long arguments (and positional argument names) to their values.
-
-Non-flag tokens are matched to positional arguments in the order they were
-added. Flags and positionals can be interleaved freely.
-
-Otherwise it will return an `Error` containing an error message. If that error
-message is empty, `--help` was requested. If you don’t want to provide a
-`--help` feature, you can override that flag.")
+  (private parse-from)
+  (hidden parse-from)
+  ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
+  ; array against `p`. Non-flag tokens fill positionals in order; flags and
+  ; positionals interleave freely. Returns a `Success` map (long option and
+  ; positional name → value) or an `Error` message — an *empty* error message
+  ; means `--help` was requested. `App` translates that empty-error signal into
+  ; contextual help (see `Dispatch`).
   (defn parse-from [p args]
     (let-do [values (Parser.values p)
              res (the (Result Bool String) (Result.Success true))
@@ -509,12 +503,37 @@ message is empty, `--help` was requested. If you don’t want to provide a
         (set! a (Array.push-back a @(StaticArray.unsafe-nth &System.args i))))
       a))
 
-  (doc parse "parses the process arguments as specified by the parser `p`.
+  (doc parse "parses the process arguments as specified by the parser `p`,
+skipping the program name.
 
-This is a thin wrapper around [`parse-from`](#parse-from) that reads the process
-arguments, skipping the program name. See it for the full description of the
-returned map and the error protocol.")
+On success it returns a `Success` holding a `Map` from each long option (and
+positional argument name) to its value; unset values are absent from the map.
+Non-flag tokens fill positional arguments in the order they were added, and
+flags and positionals can be interleaved freely.
+
+On failure it returns an `Error` with a message — except that an *empty* error
+message means `--help` (or `-h`) was requested. Override that flag if you don’t
+want the built-in help behaviour.")
   (defn parse [p] (parse-from p &(args-rest)))
+
+  (doc Dispatch
+    "is what dispatching an [`App`](#app) yields. It answers not just
+whether parsing succeeded, but whether help was requested and *for what*, so a
+caller can show the right usage:
+
+- `Parsed` — success. Holds a `Pair` of the chosen subcommand name and its
+parsed value `Map`.
+- `AppHelp` — top-level `--help`/`-h` was given before any subcommand; respond
+with [`App.usage`](#appusage).
+- `CommandHelp` — a subcommand’s own `--help`/`-h` was given; carries that
+subcommand’s name, so respond with [`App.usage-for`](#appusage-for).
+- `Failure` — carries a human-readable error message (a missing, unknown, or
+option-shaped leading token, or the subcommand’s own parse error).")
+  (deftype Dispatch
+    (Parsed [(Pair String (Map String CLI.Type))])
+    (AppHelp [])
+    (CommandHelp [String])
+    (Failure [String]))
 
   (doc App "bundles a program description with a set of named subcommands, each
 its own [`Parser`](#parser) — the shape of a tool like `git` or `docker`, where
@@ -553,32 +572,34 @@ subcommands yet.")
     (defn has? [app name] (not (< (index-of app name) 0)))
 
     (doc parse-from "dispatches the argument array `args` to one of the
-subcommands of the `App` `app`.
+subcommands of the `App` `app`, returning a [`Dispatch`](#dispatch).
 
 The first token selects the subcommand and the remaining tokens are parsed by
-that subcommand’s [`Parser`](#parser). On success it returns a `Success` holding
-a `Pair` of the chosen subcommand name and its parsed value map. On failure it
-returns an `Error`: an empty message means `--help` was requested, otherwise the
-message describes what went wrong — a missing subcommand, an unknown subcommand,
-or the subcommand’s own parse error (surfaced verbatim).")
+that subcommand’s [`Parser`](#parser). A leading `--help`/`-h` (before any
+subcommand) yields `AppHelp`; any *other* leading option is a `Failure` —
+options come after the subcommand, not before it. A recognized subcommand
+yields `Parsed` on success, `CommandHelp` (carrying the subcommand name) if that
+subcommand’s own `--help`/`-h` was requested, or a `Failure` with its parse
+error otherwise. A missing or unknown subcommand is a `Failure`.")
     (defn parse-from [app args]
       (if (= 0 (length args))
-        (the
-          (Result (Pair String (Map String CLI.Type)) String)
-          (Result.Error @"No subcommand given."))
+        (Dispatch.Failure @"No subcommand given.")
         (let [x (unsafe-nth args 0)]
           (cond
-            (or (= x "--help") (= x "-h")) (Result.Error @"")
+            (or (= x "--help") (= x "-h")) (Dispatch.AppHelp)
             (starts-with? x "-")
-              (Result.Error (fmt "Expected a subcommand, got option: %s" x))
+              (Dispatch.Failure (fmt "Expected a subcommand, got option: %s" x))
             (let [idx (index-of app x)]
               (if (< idx 0)
-                (Result.Error (fmt "Unknown subcommand: %s" x))
+                (Dispatch.Failure (fmt "Unknown subcommand: %s" x))
                 (let [p (Box.peek (Pair.b (unsafe-nth (commands app) idx)))
                       rest (suffix args 1)]
                   (match (CLI.parse-from p &rest)
-                    (Result.Success m) (Result.Success (Pair.init @x m))
-                    (Result.Error e) (Result.Error e)))))))))
+                    (Result.Success m) (Dispatch.Parsed (Pair.init @x m))
+                    (Result.Error e)
+                      (if (empty? &e)
+                        (Dispatch.CommandHelp @x)
+                        (Dispatch.Failure e))))))))))
 
     (doc parse "dispatches the process arguments to one of the subcommands of
 the `App` `app`. See [`parse-from`](#appparse-from) for the result shape.")

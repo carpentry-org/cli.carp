@@ -84,20 +84,34 @@ name with `CLI.App.add`:
                    (CLI.App.add "commit" &commit)
                    (CLI.App.add "push" &push))]
     (match (CLI.App.parse &app)
-      (Result.Success chosen)
+      (CLI.Dispatch.Parsed chosen)
         (println* "ran " (Pair.a &chosen) " with "
                   &(Map.length (Pair.b &chosen)) " values")
-      (Result.Error msg)
-        (if (empty? &msg) (CLI.App.usage &app) (IO.errorln &msg)))))
+      (CLI.Dispatch.AppHelp)          (CLI.App.usage &app)
+      (CLI.Dispatch.CommandHelp name) (CLI.App.usage-for &app &name)
+      (CLI.Dispatch.Failure msg)      (IO.errorln &msg))))
 ```
 
 `CLI.App.parse` (and its explicit-array sibling `CLI.App.parse-from`) reads the
 first token to pick the subcommand and hands the remaining tokens to that
-subcommand’s parser. On success it returns a `Pair` of the chosen subcommand
-name and its parsed value `Map` — so you learn both *which* command ran and
-*what* it was given. On error it returns a message: an empty one means `--help`
-was requested (just like the flat parser), otherwise it describes a missing
-subcommand, an unknown subcommand, or the subcommand’s own parse error.
+subcommand’s parser. Rather than a bare `Result`, it returns a `CLI.Dispatch`
+that tells you exactly what happened, so you can respond with the *right* help:
+
+- `Parsed` — success. Holds a `Pair` of the chosen subcommand name and its
+  parsed value `Map`, so you learn both *which* command ran and *what* it was
+  given.
+- `AppHelp` — a top-level `--help`/`-h` was requested before any subcommand;
+  show `CLI.App.usage`.
+- `CommandHelp` — a subcommand’s *own* `--help`/`-h` was requested (e.g.
+  `mytool commit --help`); it carries the subcommand’s name, so you can show
+  `CLI.App.usage-for` for exactly that command instead of the whole app.
+- `Failure` — carries an error message: a missing or unknown subcommand, the
+  subcommand’s own parse error, or a leading option (see below).
+
+Options come **after** the subcommand. A leading option other than `--help`/`-h`
+— for example `mytool --verbose commit` — is a `Failure` with the message
+`Expected a subcommand, got option: --verbose`; put such flags on the subcommand
+instead (`mytool commit --verbose`).
 
 `CLI.App.usage` lists the registered subcommands with their descriptions, and
 `CLI.App.usage-for` prints the detailed usage of a single subcommand.
