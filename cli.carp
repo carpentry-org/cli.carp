@@ -376,18 +376,15 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                      (Positional.description pos))))
             (IO.println ""))))))
 
-  (doc parse "parses the arguments as specified by the parser `p`.
-
-If everything goes right, it will return a `Success` containing a map from
-the long arguments (and positional argument names) to their values.
-
-Non-flag tokens are matched to positional arguments in the order they were
-added. Flags and positionals can be interleaved freely.
-
-Otherwise it will return an `Error` containing an error message. If that error
-message is empty, `--help` was requested. If you don’t want to provide a
-`--help` feature, you can override that flag.")
-  (defn parse [p]
+  (private parse-from)
+  (hidden parse-from)
+  ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
+  ; array against `p`. Non-flag tokens fill positionals in order; flags and
+  ; positionals interleave freely. Returns a `Success` map (long option and
+  ; positional name → value) or an `Error` message — an *empty* error message
+  ; means `--help` was requested. `App` translates that empty-error signal into
+  ; contextual help (see `Dispatch`).
+  (defn parse-from [p args]
     (let-do [values (Parser.values p)
              res (the (Result Bool String) (Result.Success true))
              options (Parser.options p)
@@ -396,8 +393,8 @@ message is empty, `--help` was requested. If you don’t want to provide a
              pos-results (Array.copy-map
                &(fn [_p] (the (Maybe CLI.Type) (Maybe.Nothing)))
                positionals)]
-      (for [i 1 (StaticArray.length &System.args)]
-        (let [x (StaticArray.unsafe-nth &System.args i)]
+      (for [i 0 (Array.length args)]
+        (let [x (Array.unsafe-nth args i)]
           (cond
             (or (starts-with? x "--") (starts-with? x "-"))
               (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
@@ -405,18 +402,25 @@ message is empty, `--help` was requested. If you don’t want to provide a
                     k (if (> (length &splt) 1) (unsafe-nth &splt 0) &flag)
                     v (cond
                       (> (length &splt) 1) (nth &splt 1)
-                      (< i (Int.dec (StaticArray.length &System.args)))
+                      (< i (Int.dec (Array.length args)))
                         (do
                           (set! i (Int.inc i))
-                          (Maybe.Just @(StaticArray.unsafe-nth &System.args i)))
+                          (Maybe.Just @(Array.unsafe-nth args i)))
                       (Maybe.Nothing))]
                 (cond
                   (CmdMap.contains? &values k)
                     (if (CmdMap.type? &values k &(Tag.TBoolean))
                       (do
-                        (when (and (Maybe.just? &v) (> (length &splt) 1))
+                        ; give back the token the space-separated form (splt <= 1)
+                        ; speculatively consumed; the `=` form consumed nothing, so
+                        ; decrementing there would re-read the same token forever.
+                        (when (and (Maybe.just? &v) (<= (length &splt) 1))
                           (set! i (Int.dec i)))
-                        (CmdMap.put! &values k "true"))
+                        (CmdMap.put! &values
+                                     k
+                                     (if (> (length &splt) 1)
+                                       (unsafe-nth &splt 1)
+                                       "true")))
                       (match v
                         (Maybe.Just val) (CmdMap.put! &values k &val)
                         (Maybe.Nothing)
@@ -487,6 +491,145 @@ message is empty, `--help` was requested. If you don’t want to provide a
                 (Maybe.Nothing) ()))
             (Result.Success m))
         (Result.Error x) (Result.Error x)))))
+
+(defmodule CLI
+  (use Array)
+
+  (hidden args-rest)
+  (defn args-rest []
+    (let-do [n (StaticArray.length &System.args)
+             a []]
+      (for [i 1 n]
+        (set! a (Array.push-back a @(StaticArray.unsafe-nth &System.args i))))
+      a))
+
+  (doc parse "parses the process arguments as specified by the parser `p`,
+skipping the program name.
+
+On success it returns a `Success` holding a `Map` from each long option (and
+positional argument name) to its value; unset values are absent from the map.
+Non-flag tokens fill positional arguments in the order they were added, and
+flags and positionals can be interleaved freely.
+
+On failure it returns an `Error` with a message — except that an *empty* error
+message means `--help` (or `-h`) was requested. Override that flag if you don’t
+want the built-in help behaviour.")
+  (defn parse [p] (parse-from p &(args-rest)))
+
+  (doc Dispatch
+    "is what dispatching an [`App`](#app) yields. It answers not just
+whether parsing succeeded, but whether help was requested and *for what*, so a
+caller can show the right usage:
+
+- `Parsed` — success. Holds a `Pair` of the chosen subcommand name and its
+parsed value `Map`.
+- `AppHelp` — top-level `--help`/`-h` was given before any subcommand; respond
+with [`App.usage`](#appusage).
+- `CommandHelp` — a subcommand’s own `--help`/`-h` was given; carries that
+subcommand’s name, so respond with [`App.usage-for`](#appusage-for).
+- `Failure` — carries a human-readable error message (a missing, unknown, or
+option-shaped leading token, or the subcommand’s own parse error).")
+  (deftype Dispatch
+    (Parsed [(Pair String (Map String CLI.Type))])
+    (AppHelp [])
+    (CommandHelp [String])
+    (Failure [String]))
+
+  (doc App "bundles a program description with a set of named subcommands, each
+its own [`Parser`](#parser) — the shape of a tool like `git` or `docker`, where
+`git commit` and `git push` are independent parsers with their own options and
+positionals. Build one with [`App.new`](#appnew) and [`App.add`](#appadd), then
+dispatch with [`App.parse`](#appparse). Adding subcommands is purely additive: a
+plain `Parser` still works exactly as before.")
+  (deftype App
+    [description String
+     commands (Array (Pair String (Box CLI.Parser)))])
+
+  (defmodule App
+    (use Array)
+
+    (doc new "creates a new `App` with program description `descr` and no
+subcommands yet.")
+    (defn new [descr] (init descr []))
+
+    (doc add "registers the subcommand `name`, handled by the parser `p`, on the
+`App` `app`.")
+    (defn add [app name p]
+      (update-commands app
+                       &(fn [cmds]
+                         (push-back cmds (Pair.init @name (Box.init @p))))))
+
+    (hidden index-of)
+    (defn index-of [app name]
+      (let-do [cmds (commands app)
+               idx -1]
+        (for [i 0 (length cmds)]
+          (when-do (= (Pair.a (unsafe-nth cmds i)) name) (set! idx i) (break)))
+        idx))
+
+    (doc has? "returns whether the `App` `app` knows a subcommand called
+`name`.")
+    (defn has? [app name] (not (< (index-of app name) 0)))
+
+    (doc parse-from "dispatches the argument array `args` to one of the
+subcommands of the `App` `app`, returning a [`Dispatch`](#dispatch).
+
+The first token selects the subcommand and the remaining tokens are parsed by
+that subcommand’s [`Parser`](#parser). A leading `--help`/`-h` (before any
+subcommand) yields `AppHelp`; any *other* leading option is a `Failure` —
+options come after the subcommand, not before it. A recognized subcommand
+yields `Parsed` on success, `CommandHelp` (carrying the subcommand name) if that
+subcommand’s own `--help`/`-h` was requested, or a `Failure` with its parse
+error otherwise. A missing or unknown subcommand is a `Failure`.")
+    (defn parse-from [app args]
+      (if (= 0 (length args))
+        (Dispatch.Failure @"No subcommand given.")
+        (let [x (unsafe-nth args 0)]
+          (cond
+            (or (= x "--help") (= x "-h")) (Dispatch.AppHelp)
+            (starts-with? x "-")
+              (Dispatch.Failure (fmt "Expected a subcommand, got option: %s" x))
+            (let [idx (index-of app x)]
+              (if (< idx 0)
+                (Dispatch.Failure (fmt "Unknown subcommand: %s" x))
+                (let [p (Box.peek (Pair.b (unsafe-nth (commands app) idx)))
+                      rest (suffix args 1)]
+                  (match (CLI.parse-from p &rest)
+                    (Result.Success m) (Dispatch.Parsed (Pair.init @x m))
+                    (Result.Error e)
+                      (if (empty? &e)
+                        (Dispatch.CommandHelp @x)
+                        (Dispatch.Failure e))))))))))
+
+    (doc parse "dispatches the process arguments to one of the subcommands of
+the `App` `app`. See [`parse-from`](#appparse-from) for the result shape.")
+    (defn parse [app] (parse-from app &(CLI.args-rest)))
+
+    (doc usage "prints the available subcommands of the `App` `app` with their
+descriptions.")
+    (defn usage [app]
+      (do
+        (IO.println
+          &(fmt "usage: %s <command> [options]"
+                (StaticArray.unsafe-nth &System.args 0)))
+        (IO.println (description app))
+        (IO.println "")
+        (IO.println "Commands:")
+        (for [i 0 (length (commands app))]
+          (let [c (unsafe-nth (commands app) i)]
+            (IO.println
+              &(fmt "  %s: %s"
+                    (Pair.a c)
+                    (Parser.description (Box.peek (Pair.b c)))))))
+        (IO.println "  --help|-h: print this help message and exit.")))
+
+    (doc usage-for "prints the detailed usage of the single subcommand `name` of
+the `App` `app`, or an error if there is no such subcommand.")
+    (defn usage-for [app name]
+      (let [idx (index-of app name)]
+        (if (< idx 0)
+          (IO.errorln &(fmt "Unknown subcommand: %s" name))
+          (CLI.usage (Box.peek (Pair.b (unsafe-nth (commands app) idx)))))))))
 
 (definterface to-cli-type (Fn [a] CLI.Type))
 

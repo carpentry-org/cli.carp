@@ -2,6 +2,35 @@
 (load "Test.carp")
 (use Test)
 
+; a small git-like app reused by the subcommand tests below
+
+(def commit-parser
+  (=> (CLI.new @"record changes")
+      (CLI.add &(CLI.str "message" "m" "commit message" true))))
+
+(def push-parser
+  (=> (CLI.new @"upload changes")
+      (CLI.add &(CLI.bool "force" "f" "force the push"))
+      (CLI.add-pos &(CLI.pos-str "remote" "the remote" false))))
+
+(def git
+  (=> (CLI.App.new @"a tiny git")
+      (CLI.App.add "commit" &commit-parser)
+      (CLI.App.add "push" &push-parser)))
+
+; `CLI.parse-from` is internal, so the flat-parser regression tests below reach
+; it through a one-subcommand `App`: prepend a dummy subcommand name, dispatch,
+; and collapse the `Dispatch` back to the `Result` shape those assertions expect.
+; This exercises exactly the same parse loop every subcommand routes through.
+(defn flat-parse [p args]
+  (let [app (=> (CLI.App.new @"wrap") (CLI.App.add "cmd" p))
+        full (Array.concat &[[@"cmd"] @args])]
+    (match (CLI.App.parse-from &app &full)
+      (CLI.Dispatch.Parsed pair) (Result.Success @(Pair.b &pair))
+      (CLI.Dispatch.Failure e) (Result.Error e)
+      (CLI.Dispatch.CommandHelp _) (Result.Error @"")
+      (CLI.Dispatch.AppHelp) (Result.Error @""))))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -398,4 +427,216 @@
               "Parser.values populates second option"))
       (assert-false &t
         (CLI.CmdMap.set? &m "a")
-        "Parser.values options start unset"))))
+        "Parser.values options start unset")))
+
+  ; ---------------------------------------------------------------------------
+  ; parse-from (explicit-array parsing, and regression coverage for the flat
+  ; parser: a plain no-subcommand Parser must behave exactly as before)
+  ; ---------------------------------------------------------------------------
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.int "flag" "f" "a flag" true))
+                 (CLI.add &(CLI.str "name" "n" "a name" false @"anon")))
+           res (flat-parse &p &[@"--flag" @"5" @"--name" @"veit"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "5"
+                   &(CLI.Type.str &(Map.get &m "flag"))
+                   "parse-from reads an int option")]
+          (assert-equal &t
+            "veit"
+            &(CLI.Type.str &(Map.get &m "name"))
+            "parse-from reads a string option"))
+      (Result.Error _)
+        (assert-true test false "parse-from unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "src" "source" true)))
+           res (flat-parse &p &[@"in.txt"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "in.txt"
+          &(CLI.Type.str &(Map.get &m "src"))
+          "parse-from reads a positional argument")
+      (Result.Error _)
+        (assert-true test false "parse-from positional unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.int "flag" "f" "a flag" true)))
+           res (flat-parse &p &[])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Required option missing: --flag"
+          &e
+          "parse-from reports a missing required option")
+      (Result.Success _)
+        (assert-true test false "parse-from should have errored")))
+
+  ; regression: a boolean flag in `--flag=value` form used to hang the parser
+  ; forever (an inverted guard gave back a token that was never consumed) and
+  ; ignored the value; it must terminate and honor the value
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.bool "force" "f" "force")))
+           res (flat-parse &p &[@"--force=false"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "false"
+          &(CLI.Type.str &(Map.get &m "force"))
+          "parse-from honors --flag=false for a boolean (and terminates)")
+      (Result.Error _)
+        (assert-true test false "boolean --flag=false unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.bool "force" "f" "force")))
+           res (flat-parse &p &[@"--force=true"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "true"
+          &(CLI.Type.str &(Map.get &m "force"))
+          "parse-from honors --flag=true for a boolean")
+      (Result.Error _)
+        (assert-true test false "boolean --flag=true unexpectedly errored")))
+
+  ; regression: a bare boolean that is not the last token must not swallow the
+  ; following token (the same inverted guard dropped it)
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.bool "force" "f" "force"))
+                 (CLI.add-pos &(CLI.pos-str "file" "a file" false)))
+           res (flat-parse &p &[@"--force" @"in.txt"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "force"))
+                   "a bare boolean flag reads as true")]
+          (assert-equal &t
+            "in.txt"
+            &(CLI.Type.str &(Map.get &m "file"))
+            "a bare boolean does not swallow the following positional"))
+      (Result.Error _)
+        (assert-true test false "bare boolean + positional unexpectedly errored")))
+
+  ; ---------------------------------------------------------------------------
+  ; App / subcommands
+  ; ---------------------------------------------------------------------------
+
+  (assert-equal test
+    2
+    (Array.length (CLI.App.commands &git))
+    "App registers two subcommands")
+
+  (let-do [t (assert-true test
+             (CLI.App.has? &git "commit")
+             "App.has? finds a registered subcommand")]
+    (assert-false &t
+      (CLI.App.has? &git "nope")
+      "App.has? rejects an unknown subcommand"))
+
+  (let-do [res (CLI.App.parse-from &git &[@"commit" @"--message" @"hello"])]
+    (match res
+      (CLI.Dispatch.Parsed pair)
+        (let-do [t (assert-equal test
+                   "commit"
+                   (Pair.a &pair)
+                   "App dispatches to the commit subcommand")]
+          (assert-equal &t
+            "hello"
+            &(CLI.Type.str &(Map.get (Pair.b &pair) "message"))
+            "commit subcommand parses its own option"))
+      _ (assert-true test false "commit dispatch unexpectedly errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"push" @"origin" @"--force"])]
+    (match res
+      (CLI.Dispatch.Parsed pair)
+        (let-do [t (assert-equal test
+                   "push"
+                   (Pair.a &pair)
+                   "App dispatches to the push subcommand")]
+          (set! t
+                (assert-equal &t
+                  "origin"
+                  &(CLI.Type.str &(Map.get (Pair.b &pair) "remote"))
+                  "push subcommand parses its positional"))
+          (assert-equal &t
+            "true"
+            &(CLI.Type.str &(Map.get (Pair.b &pair) "force"))
+            "push subcommand parses its boolean flag"))
+      _ (assert-true test false "push dispatch unexpectedly errored")))
+
+  ; regression: the `--flag=value` boolean hang and value are reachable through a
+  ; subcommand too, since App routes every subcommand's args through parse-from
+  (let-do [res (CLI.App.parse-from &git &[@"push" @"--force=false"])]
+    (match res
+      (CLI.Dispatch.Parsed pair)
+        (assert-equal test
+          "false"
+          &(CLI.Type.str &(Map.get (Pair.b &pair) "force"))
+          "a subcommand honors --flag=false for a boolean (and terminates)")
+      _
+        (assert-true test
+          false
+          "subcommand boolean --flag=false unexpectedly errored")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"frobnicate"])]
+    (match res
+      (CLI.Dispatch.Failure e)
+        (assert-equal test
+          "Unknown subcommand: frobnicate"
+          &e
+          "App reports an unknown subcommand")
+      _ (assert-true test false "unknown subcommand should have failed")))
+
+  (let-do [res (CLI.App.parse-from &git &[])]
+    (match res
+      (CLI.Dispatch.Failure e)
+        (assert-equal test
+          "No subcommand given."
+          &e
+          "App reports a missing subcommand")
+      _ (assert-true test false "missing subcommand should have failed")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"commit"])]
+    (match res
+      (CLI.Dispatch.Failure e)
+        (assert-equal test
+          "Required option missing: --message"
+          &e
+          "a subcommand’s own parse error propagates")
+      _ (assert-true test false "missing required option should have failed")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"--help"])]
+    (match res
+      (CLI.Dispatch.AppHelp)
+        (assert-true test true "App surfaces top-level --help as AppHelp")
+      _ (assert-true test false "--help should have yielded AppHelp")))
+
+  ; contextual help: a subcommand’s own --help/-h must be distinguishable from
+  ; app-level help so the caller can show that subcommand’s usage, not the app’s
+  (let-do [res (CLI.App.parse-from &git &[@"commit" @"--help"])]
+    (match res
+      (CLI.Dispatch.CommandHelp name)
+        (assert-equal test
+          "commit"
+          &name
+          "a subcommand’s --help yields CommandHelp naming that subcommand")
+      _ (assert-true test false "commit --help should have yielded CommandHelp")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"push" @"-h"])]
+    (match res
+      (CLI.Dispatch.CommandHelp name)
+        (assert-equal test
+          "push"
+          &name
+          "a subcommand’s -h also yields CommandHelp naming that subcommand")
+      _ (assert-true test false "push -h should have yielded CommandHelp")))
+
+  (let-do [res (CLI.App.parse-from &git &[@"-x"])]
+    (match res
+      (CLI.Dispatch.Failure e)
+        (assert-equal test
+          "Expected a subcommand, got option: -x"
+          &e
+          "App rejects a leading option that is not a subcommand")
+      _ (assert-true test false "leading option should have failed"))))
