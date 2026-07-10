@@ -417,9 +417,16 @@ message is empty, `--help` was requested. If you don’t want to provide a
                   (CmdMap.contains? &values k)
                     (if (CmdMap.type? &values k &(Tag.TBoolean))
                       (do
-                        (when (and (Maybe.just? &v) (> (length &splt) 1))
+                        ; give back the token the space-separated form (splt <= 1)
+                        ; speculatively consumed; the `=` form consumed nothing, so
+                        ; decrementing there would re-read the same token forever.
+                        (when (and (Maybe.just? &v) (<= (length &splt) 1))
                           (set! i (Int.dec i)))
-                        (CmdMap.put! &values k "true"))
+                        (CmdMap.put! &values
+                                     k
+                                     (if (> (length &splt) 1)
+                                       (unsafe-nth &splt 1)
+                                       "true")))
                       (match v
                         (Maybe.Just val) (CmdMap.put! &values k &val)
                         (Maybe.Nothing)

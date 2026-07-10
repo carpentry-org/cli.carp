@@ -461,6 +461,50 @@
       (Result.Success _)
         (assert-true test false "parse-from should have errored")))
 
+  ; regression: a boolean flag in `--flag=value` form used to hang the parser
+  ; forever (an inverted guard gave back a token that was never consumed) and
+  ; ignored the value; it must terminate and honor the value
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.bool "force" "f" "force")))
+           res (CLI.parse-from &p &[@"--force=false"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "false"
+          &(CLI.Type.str &(Map.get &m "force"))
+          "parse-from honors --flag=false for a boolean (and terminates)")
+      (Result.Error _)
+        (assert-true test false "boolean --flag=false unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat") (CLI.add &(CLI.bool "force" "f" "force")))
+           res (CLI.parse-from &p &[@"--force=true"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "true"
+          &(CLI.Type.str &(Map.get &m "force"))
+          "parse-from honors --flag=true for a boolean")
+      (Result.Error _)
+        (assert-true test false "boolean --flag=true unexpectedly errored")))
+
+  ; regression: a bare boolean that is not the last token must not swallow the
+  ; following token (the same inverted guard dropped it)
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.bool "force" "f" "force"))
+                 (CLI.add-pos &(CLI.pos-str "file" "a file" false)))
+           res (CLI.parse-from &p &[@"--force" @"in.txt"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "force"))
+                   "a bare boolean flag reads as true")]
+          (assert-equal &t
+            "in.txt"
+            &(CLI.Type.str &(Map.get &m "file"))
+            "a bare boolean does not swallow the following positional"))
+      (Result.Error _)
+        (assert-true test false "bare boolean + positional unexpectedly errored")))
+
   ; ---------------------------------------------------------------------------
   ; App / subcommands
   ; ---------------------------------------------------------------------------
@@ -509,6 +553,20 @@
             "push subcommand parses its boolean flag"))
       (Result.Error _)
         (assert-true test false "push dispatch unexpectedly errored")))
+
+  ; regression: the `--flag=value` boolean hang and value are reachable through a
+  ; subcommand too, since App routes every subcommand's args through parse-from
+  (let-do [res (CLI.App.parse-from &git &[@"push" @"--force=false"])]
+    (match res
+      (Result.Success pair)
+        (assert-equal test
+          "false"
+          &(CLI.Type.str &(Map.get (Pair.b &pair) "force"))
+          "a subcommand honors --flag=false for a boolean (and terminates)")
+      (Result.Error _)
+        (assert-true test
+          false
+          "subcommand boolean --flag=false unexpectedly errored")))
 
   (let-do [res (CLI.App.parse-from &git &[@"frobnicate"])]
     (match res
