@@ -380,23 +380,30 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
   (hidden parse-from)
   ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
   ; array against `p`. Non-flag tokens fill positionals in order; flags and
-  ; positionals interleave freely. Returns a `Success` map (long option and
-  ; positional name → value) or an `Error` message — an *empty* error message
-  ; means `--help` was requested. `App` translates that empty-error signal into
-  ; contextual help (see `Dispatch`).
+  ; positionals interleave freely. A bare `--` ends option parsing: it is
+  ; consumed and every later token is treated as a positional even if it begins
+  ; with `-`. A token shaped like a negative number (`-` then a digit) is a
+  ; positional too, since options are always named. Returns a `Success` map
+  ; (long option and positional name → value) or an `Error` message — an *empty*
+  ; error message means `--help` was requested. `App` translates that empty-error
+  ; signal into contextual help (see `Dispatch`).
   (defn parse-from [p args]
     (let-do [values (Parser.values p)
              res (the (Result Bool String) (Result.Success true))
              options (Parser.options p)
              positionals (Parser.positionals p)
              pos-idx 0
+             opts-ended false
              pos-results (Array.copy-map
                &(fn [_p] (the (Maybe CLI.Type) (Maybe.Nothing)))
                positionals)]
       (for [i 0 (Array.length args)]
         (let [x (Array.unsafe-nth args i)]
           (cond
-            (or (starts-with? x "--") (starts-with? x "-"))
+            (and (not opts-ended) (= x "--")) (set! opts-ended true)
+            (and (not opts-ended)
+                 (starts-with? x "-")
+                 (not (Pattern.matches? #"^\-[0-9]" x)))
               (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
                     splt (split-by &flag &[\=])
                     k (if (> (length &splt) 1) (unsafe-nth &splt 0) &flag)
@@ -509,7 +516,10 @@ skipping the program name.
 On success it returns a `Success` holding a `Map` from each long option (and
 positional argument name) to its value; unset values are absent from the map.
 Non-flag tokens fill positional arguments in the order they were added, and
-flags and positionals can be interleaved freely.
+flags and positionals can be interleaved freely. A bare `--` ends option
+parsing — every following token becomes a positional even if it starts with `-`
+— and a token shaped like a negative number (`-5`, `-3.14`) is a positional, not
+an unknown option.
 
 On failure it returns an `Error` with a message — except that an *empty* error
 message means `--help` (or `-h`) was requested. Override that flag if you don’t

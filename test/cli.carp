@@ -518,6 +518,93 @@
       (Result.Error _)
         (assert-true test false "bare boolean + positional unexpectedly errored")))
 
+  ; a bare `--` ends option parsing: every following token is a positional even
+  ; if it begins with `-`
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "target" "a target" true)))
+           res (flat-parse &p &[@"--" @"-x"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-x"
+          &(CLI.Type.str &(Map.get &m "target"))
+          "a bare -- routes the following -x into a positional")
+      (Result.Error _)
+        (assert-true test false "-- then -x unexpectedly errored")))
+
+  ; a token after `--` is a positional even when it is shaped like a long option
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "target" "a target" true)))
+           res (flat-parse &p &[@"--" @"--foo"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "--foo"
+          &(CLI.Type.str &(Map.get &m "target"))
+          "a token after -- is a positional, not an unknown-option error")
+      (Result.Error _)
+        (assert-true test false "-- then --foo unexpectedly errored")))
+
+  ; a token shaped like a negative number is a positional, not an unknown option
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-int "n" "a number" true)))
+           res (flat-parse &p &[@"-5"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-5"
+          &(CLI.Type.str &(Map.get &m "n"))
+          "a negative-integer token fills a positional")
+      (Result.Error _)
+        (assert-true test
+          false
+          "negative-integer positional unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-float "rate" "a rate" true)))
+           res (flat-parse &p &[@"-3.14"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-3.14"
+          &(CLI.Type.str &(Map.get &m "rate"))
+          "a negative-float token fills a positional")
+      (Result.Error _)
+        (assert-true test false "negative-float positional unexpectedly errored")))
+
+  ; the negative-number-as-positional path is only for standalone tokens: an
+  ; option that takes a value still consumes a following -5 as that value
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.int "offset" "o" "an offset" true)))
+           res (flat-parse &p &[@"--offset" @"-5"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-5"
+          &(CLI.Type.str &(Map.get &m "offset"))
+          "a value-taking option consumes a following -5 as its value")
+      (Result.Error _)
+        (assert-true test false "--offset -5 unexpectedly errored")))
+
+  ; integration: options before -- still parse, then -- ends option parsing so a
+  ; trailing dash-prefixed token lands in a positional
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.int "offset" "o" "an offset" false))
+                 (CLI.add-pos &(CLI.pos-str "target" "a target" true)))
+           res (flat-parse &p &[@"--offset" @"5" @"--" @"-x"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "5"
+                   &(CLI.Type.str &(Map.get &m "offset"))
+                   "an option before -- still parses")]
+          (assert-equal &t
+            "-x"
+            &(CLI.Type.str &(Map.get &m "target"))
+            "-- ends options so the trailing -x is a positional"))
+      (Result.Error _)
+        (assert-true test false "option then -- then -x unexpectedly errored")))
+
   ; ---------------------------------------------------------------------------
   ; App / subcommands
   ; ---------------------------------------------------------------------------
