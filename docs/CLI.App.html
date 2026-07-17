@@ -58,12 +58,57 @@
             </div>
             <div class="module">
                 <h1>
-                    CLI.Parser
+                    CLI.App
                 </h1>
                 <div class="module-description">
-                    <p>is the parser type. To construct a <code>Parser</code>, please use
-<a href="#new"><code>new</code></a>.</p>
+                    <p>bundles a program description with a set of named subcommands, each
+its own <a href="#parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or <code>docker</code>, where
+<code>git commit</code> and <code>git push</code> are independent parsers with their own options and
+positionals. Build one with <a href="#appnew"><code>App.new</code></a> and <a href="#appadd"><code>App.add</code></a>, then
+dispatch with <a href="#appparse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
+plain <code>Parser</code> still works exactly as before.</p>
 
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#add">
+                        <h3 id="add">
+                            add
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.App, (Ref String a), (Ref CLI.Parser a)] CLI.App)
+                    </p>
+                    <pre class="args">
+                        (add app name p)
+                    </pre>
+                    <p class="doc">
+                        <p>registers the subcommand <code>name</code>, handled by the parser <code>p</code>, on the
+<code>App</code> <code>app</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#commands">
+                        <h3 id="commands">
+                            commands
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a)] (Ref (Array (Pair String (Box CLI.Parser))) a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>commands</code> property of a <code>App</code>.</p>
+
+                    </p>
                 </div>
                 <div class="binder">
                     <a class="anchor" href="#copy">
@@ -75,13 +120,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] CLI.Parser)
+                        (Fn [(Ref CLI.App a)] CLI.App)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>copies a <code>Parser</code>.</p>
+                        <p>copies a <code>App</code>.</p>
 
                     </p>
                 </div>
@@ -95,13 +140,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser] ())
+                        (Fn [CLI.App] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>deletes a <code>Parser</code>. Should usually not be called manually.</p>
+                        <p>deletes a <code>App</code>. Should usually not be called manually.</p>
 
                     </p>
                 </div>
@@ -115,13 +160,34 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref String a))
+                        (Fn [(Ref CLI.App a)] (Ref String a))
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>gets the <code>description</code> property of a <code>Parser</code>.</p>
+                        <p>gets the <code>description</code> property of a <code>App</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#has?">
+                        <h3 id="has?">
+                            has?
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref String a)] Bool)
+                    </p>
+                    <pre class="args">
+                        (has? app name)
+                    </pre>
+                    <p class="doc">
+                        <p>returns whether the <code>App</code> <code>app</code> knows a subcommand called
+<code>name</code>.</p>
 
                     </p>
                 </div>
@@ -135,53 +201,83 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [String, (Array CLI.Option), (Array CLI.Positional)] CLI.Parser)
+                        (Fn [String, (Array (Pair String (Box CLI.Parser)))] CLI.App)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>creates a <code>Parser</code>.</p>
+                        <p>creates a <code>App</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#options">
-                        <h3 id="options">
-                            options
+                    <a class="anchor" href="#new">
+                        <h3 id="new">
+                            new
                         </h3>
                     </a>
                     <div class="description">
-                        instantiate
+                        defn
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref (Array CLI.Option) a))
+                        (Fn [String] CLI.App)
                     </p>
-                    <span>
-                        
-                    </span>
+                    <pre class="args">
+                        (new descr)
+                    </pre>
                     <p class="doc">
-                        <p>gets the <code>options</code> property of a <code>Parser</code>.</p>
+                        <p>creates a new <code>App</code> with program description <code>descr</code> and no
+subcommands yet.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#positionals">
-                        <h3 id="positionals">
-                            positionals
+                    <a class="anchor" href="#parse">
+                        <h3 id="parse">
+                            parse
                         </h3>
                     </a>
                     <div class="description">
-                        instantiate
+                        defn
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] (Ref (Array CLI.Positional) a))
+                        (Fn [(Ref CLI.App a)] CLI.Dispatch)
                     </p>
-                    <span>
-                        
-                    </span>
+                    <pre class="args">
+                        (parse app)
+                    </pre>
                     <p class="doc">
-                        <p>gets the <code>positionals</code> property of a <code>Parser</code>.</p>
+                        <p>dispatches the process arguments to one of the subcommands of
+the <code>App</code> <code>app</code>. See <a href="#appparse-from"><code>parse-from</code></a> for the result shape.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#parse-from">
+                        <h3 id="parse-from">
+                            parse-from
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref (Array String) a)] CLI.Dispatch)
+                    </p>
+                    <pre class="args">
+                        (parse-from app args)
+                    </pre>
+                    <p class="doc">
+                        <p>dispatches the argument array <code>args</code> to one of the
+subcommands of the <code>App</code> <code>app</code>, returning a <a href="#dispatch"><code>Dispatch</code></a>.</p>
+<p>The first token selects the subcommand and the remaining tokens are parsed by
+that subcommand’s <a href="#parser"><code>Parser</code></a>. A leading <code>--help</code>/<code>-h</code> (before any
+subcommand) yields <code>AppHelp</code>; any <em>other</em> leading option is a <code>Failure</code> —
+options come after the subcommand, not before it. A recognized subcommand
+yields <code>Parsed</code> on success, <code>CommandHelp</code> (carrying the subcommand name) if that
+subcommand’s own <code>--help</code>/<code>-h</code> was requested, or a <code>Failure</code> with its parse
+error otherwise. A missing or unknown subcommand is a <code>Failure</code>.</p>
 
                     </p>
                 </div>
@@ -195,13 +291,53 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] String)
+                        (Fn [(Ref CLI.App a)] String)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>converts a <code>Parser</code> to a string.</p>
+                        <p>converts a <code>App</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-commands">
+                        <h3 id="set-commands">
+                            set-commands
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.App, (Array (Pair String (Box CLI.Parser)))] CLI.App)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>commands</code> property of a <code>App</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-commands!">
+                        <h3 id="set-commands!">
+                            set-commands!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Array (Pair String (Box CLI.Parser)))] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>commands</code> property of a <code>App</code> in place.</p>
 
                     </p>
                 </div>
@@ -215,13 +351,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, String] CLI.Parser)
+                        (Fn [CLI.App, String] CLI.App)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>description</code> property of a <code>Parser</code>.</p>
+                        <p>sets the <code>description</code> property of a <code>App</code>.</p>
 
                     </p>
                 </div>
@@ -235,93 +371,13 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a), String] ())
+                        (Fn [(Ref CLI.App a), String] ())
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>sets the <code>description</code> property of a <code>Parser</code> in place.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#set-options">
-                        <h3 id="set-options">
-                            set-options
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [CLI.Parser, (Array CLI.Option)] CLI.Parser)
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>sets the <code>options</code> property of a <code>Parser</code>.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#set-options!">
-                        <h3 id="set-options!">
-                            set-options!
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [(Ref CLI.Parser a), (Array CLI.Option)] ())
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>sets the <code>options</code> property of a <code>Parser</code> in place.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#set-positionals">
-                        <h3 id="set-positionals">
-                            set-positionals
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [CLI.Parser, (Array CLI.Positional)] CLI.Parser)
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>sets the <code>positionals</code> property of a <code>Parser</code>.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#set-positionals!">
-                        <h3 id="set-positionals!">
-                            set-positionals!
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [(Ref CLI.Parser a), (Array CLI.Positional)] ())
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>sets the <code>positionals</code> property of a <code>Parser</code> in place.</p>
+                        <p>sets the <code>description</code> property of a <code>App</code> in place.</p>
 
                     </p>
                 </div>
@@ -335,13 +391,33 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] String)
+                        (Fn [(Ref CLI.App a)] String)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>converts a <code>Parser</code> to a string.</p>
+                        <p>converts a <code>App</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-commands">
+                        <h3 id="update-commands">
+                            update-commands
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.App, (Ref (Fn [(Array (Pair String (Box CLI.Parser)))] (Array (Pair String (Box CLI.Parser))) a) b)] CLI.App)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>commands</code> property of a <code>CLI.App</code> using a function <code>f</code>.</p>
 
                     </p>
                 </div>
@@ -355,73 +431,56 @@
                         instantiate
                     </div>
                     <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [String] String a) b)] CLI.Parser)
+                        (Fn [CLI.App, (Ref (Fn [String] String a) b)] CLI.App)
                     </p>
                     <span>
                         
                     </span>
                     <p class="doc">
-                        <p>updates the <code>description</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
+                        <p>updates the <code>description</code> property of a <code>CLI.App</code> using a function <code>f</code>.</p>
 
                     </p>
                 </div>
                 <div class="binder">
-                    <a class="anchor" href="#update-options">
-                        <h3 id="update-options">
-                            update-options
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [(Array CLI.Option)] (Array CLI.Option) a) b)] CLI.Parser)
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>updates the <code>options</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#update-positionals">
-                        <h3 id="update-positionals">
-                            update-positionals
-                        </h3>
-                    </a>
-                    <div class="description">
-                        instantiate
-                    </div>
-                    <p class="sig">
-                        (Fn [CLI.Parser, (Ref (Fn [(Array CLI.Positional)] (Array CLI.Positional) a) b)] CLI.Parser)
-                    </p>
-                    <span>
-                        
-                    </span>
-                    <p class="doc">
-                        <p>updates the <code>positionals</code> property of a <code>CLI.Parser</code> using a function <code>f</code>.</p>
-
-                    </p>
-                </div>
-                <div class="binder">
-                    <a class="anchor" href="#values">
-                        <h3 id="values">
-                            values
+                    <a class="anchor" href="#usage">
+                        <h3 id="usage">
+                            usage
                         </h3>
                     </a>
                     <div class="description">
                         defn
                     </div>
                     <p class="sig">
-                        (Fn [(Ref CLI.Parser a)] CLI.CmdMap)
+                        (Fn [(Ref CLI.App a)] ())
                     </p>
                     <pre class="args">
-                        (values p)
+                        (usage app)
                     </pre>
                     <p class="doc">
-                        
+                        <p>prints the available subcommands of the <code>App</code> <code>app</code> with their
+descriptions.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#usage-for">
+                        <h3 id="usage-for">
+                            usage-for
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref String a)] ())
+                    </p>
+                    <pre class="args">
+                        (usage-for app name)
+                    </pre>
+                    <p class="doc">
+                        <p>prints the detailed usage of the single subcommand <code>name</code> of
+the <code>App</code> <code>app</code>, or an error if there is no such subcommand.</p>
+
                     </p>
                 </div>
             </div>

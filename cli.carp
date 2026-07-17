@@ -376,7 +376,6 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                      (Positional.description pos))))
             (IO.println ""))))))
 
-  (private parse-from)
   (hidden parse-from)
   ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
   ; array against `p`. Non-flag tokens fill positionals in order; flags and

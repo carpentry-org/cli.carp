@@ -26,6 +26,16 @@
                                 </summary>
                                 <ul>
                                     <li>
+                                        <a href="CLI.App.html">
+                                            App
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Dispatch.html">
+                                            Dispatch
+                                        </a>
+                                    </li>
+                                    <li>
                                         <a href="CLI.Option.html">
                                             Option
                                         </a>
@@ -96,6 +106,67 @@ in a <code>Result.Error</code>. If it succeeds, the <code>Result.Success</code> 
 the long flag name (or positional argument name) to the value. The values are
 not in the map if they are unset.</p>
 
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#App">
+                        <h3 id="App">
+                            <a href="CLI.App.html">
+                                App
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>bundles a program description with a set of named subcommands, each
+its own <a href="#parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or <code>docker</code>, where
+<code>git commit</code> and <code>git push</code> are independent parsers with their own options and
+positionals. Build one with <a href="#appnew"><code>App.new</code></a> and <a href="#appadd"><code>App.add</code></a>, then
+dispatch with <a href="#appparse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
+plain <code>Parser</code> still works exactly as before.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#Dispatch">
+                        <h3 id="Dispatch">
+                            <a href="CLI.Dispatch.html">
+                                Dispatch
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>is what dispatching an <a href="#app"><code>App</code></a> yields. It answers not just
+whether parsing succeeded, but whether help was requested and <em>for what</em>, so a
+caller can show the right usage:</p>
+<ul>
+<li><code>Parsed</code> — success. Holds a <code>Pair</code> of the chosen subcommand name and its
+parsed value <code>Map</code>.</li>
+<li><code>AppHelp</code> — top-level <code>--help</code>/<code>-h</code> was given before any subcommand; respond
+with <a href="#appusage"><code>App.usage</code></a>.</li>
+<li><code>CommandHelp</code> — a subcommand’s own <code>--help</code>/<code>-h</code> was given; carries that
+subcommand’s name, so respond with <a href="#appusage-for"><code>App.usage-for</code></a>.</li>
+<li><code>Failure</code> — carries a human-readable error message (a missing, unknown, or
+option-shaped leading token, or the subcommand’s own parse error).</li>
+</ul>
+
+                    </p>
                 </div>
                 <div class="binder">
                     <a class="anchor" href="#Option">
@@ -303,14 +374,18 @@ please use <a href="#pos-str"><code>pos-str</code></a>, <a href="#pos-int"><code
                         (parse p)
                     </pre>
                     <p class="doc">
-                        <p>parses the arguments as specified by the parser <code>p</code>.</p>
-<p>If everything goes right, it will return a <code>Success</code> containing a map from
-the long arguments (and positional argument names) to their values.</p>
-<p>Non-flag tokens are matched to positional arguments in the order they were
-added. Flags and positionals can be interleaved freely.</p>
-<p>Otherwise it will return an <code>Error</code> containing an error message. If that error
-message is empty, <code>--help</code> was requested. If you don’t want to provide a
-<code>--help</code> feature, you can override that flag.</p>
+                        <p>parses the process arguments as specified by the parser <code>p</code>,
+skipping the program name.</p>
+<p>On success it returns a <code>Success</code> holding a <code>Map</code> from each long option (and
+positional argument name) to its value; unset values are absent from the map.
+Non-flag tokens fill positional arguments in the order they were added, and
+flags and positionals can be interleaved freely. A bare <code>--</code> ends option
+parsing — every following token becomes a positional even if it starts with <code>-</code>
+— and a token shaped like a negative number (<code>-5</code>, <code>-3.14</code>) is a positional, not
+an unknown option.</p>
+<p>On failure it returns an <code>Error</code> with a message — except that an <em>empty</em> error
+message means <code>--help</code> (or <code>-h</code>) was requested. Override that flag if you don’t
+want the built-in help behaviour.</p>
 
                     </p>
                 </div>

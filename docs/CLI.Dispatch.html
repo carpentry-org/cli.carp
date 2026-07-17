@@ -1,0 +1,262 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo">
+                <a href="">
+                    <img src="">
+                </a>
+                <div class="title">
+                    cli
+                </div>
+                <div class="index">
+                    <ul>
+                        <li>
+                            <details>
+                                <summary>
+                                    <a href="CLI.html">
+                                        CLI
+                                    </a>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a href="CLI.App.html">
+                                            App
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Dispatch.html">
+                                            Dispatch
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Option.html">
+                                            Option
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Parser.html">
+                                            Parser
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Positional.html">
+                                            Positional
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="module">
+                <h1>
+                    CLI.Dispatch
+                </h1>
+                <div class="module-description">
+                    <p>is what dispatching an <a href="#app"><code>App</code></a> yields. It answers not just
+whether parsing succeeded, but whether help was requested and <em>for what</em>, so a
+caller can show the right usage:</p>
+<ul>
+<li><code>Parsed</code> — success. Holds a <code>Pair</code> of the chosen subcommand name and its
+parsed value <code>Map</code>.</li>
+<li><code>AppHelp</code> — top-level <code>--help</code>/<code>-h</code> was given before any subcommand; respond
+with <a href="#appusage"><code>App.usage</code></a>.</li>
+<li><code>CommandHelp</code> — a subcommand’s own <code>--help</code>/<code>-h</code> was given; carries that
+subcommand’s name, so respond with <a href="#appusage-for"><code>App.usage-for</code></a>.</li>
+<li><code>Failure</code> — carries a human-readable error message (a missing, unknown, or
+option-shaped leading token, or the subcommand’s own parse error).</li>
+</ul>
+
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#AppHelp">
+                        <h3 id="AppHelp">
+                            AppHelp
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [] CLI.Dispatch)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>AppHelp</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#CommandHelp">
+                        <h3 id="CommandHelp">
+                            CommandHelp
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [String] CLI.Dispatch)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>CommandHelp</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#Failure">
+                        <h3 id="Failure">
+                            Failure
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [String] CLI.Dispatch)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>Failure</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#Parsed">
+                        <h3 id="Parsed">
+                            Parsed
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Pair String (Map String CLI.Type))] CLI.Dispatch)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>Parsed</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#copy">
+                        <h3 id="copy">
+                            copy
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Dispatch a)] CLI.Dispatch)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>copies a <code>Dispatch</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#delete">
+                        <h3 id="delete">
+                            delete
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [CLI.Dispatch] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>deletes a <code>CLI.Dispatch</code>. This should usually not be called manually.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#get-tag">
+                        <h3 id="get-tag">
+                            get-tag
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Dispatch a)] Int)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>Gets the tag from a <code>Dispatch</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#prn">
+                        <h3 id="prn">
+                            prn
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Dispatch a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>CLI.Dispatch</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#str">
+                        <h3 id="str">
+                            str
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.Dispatch a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>CLI.Dispatch</code> to a string.</p>
+
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
