@@ -657,7 +657,7 @@ the `App` `app`, or an error if there is no such subcommand.")
 (doc CLI "is a simple CLI library for Carp.
 
 ```clojure
-(load \"git@github.com:carpentry-org/cli.carp@0.1.0\")
+(load \"git@github.com:carpentry-org/cli.carp@0.2.0\")
 
 (defn main []
   (let [p (=> (CLI.new @\"My super cool tool!\")
@@ -672,7 +672,7 @@ the `App` `app`, or an error if there is no such subcommand.")
 ## Installation
 
 ```clojure
-(load \"git@github.com:carpentry-org/cli.carp@0.1.0\")
+(load \"git@github.com:carpentry-org/cli.carp@0.2.0\")
 ```
 
 ## Usage
