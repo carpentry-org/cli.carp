@@ -44,6 +44,29 @@ manually.
 Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string `false`.
 
+### Short flag bundling
+
+Short options can be written the way you are used to typing them: `ls -la`,
+`tar -xzf archive.tar.gz`, `grep -rn pattern`. A single-dash token that matches
+no option exactly is decomposed into single-character short options, so `-av` is
+`-a -v`.
+
+Boolean options continue the bundle. The first option that takes a value ends
+it and reads the rest of the token as its value, or the next token if there is
+nothing left:
+
+```
+-n5        ; num = 5
+-avn5      ; all, verbose, num = 5
+-avn 5     ; all, verbose, num = 5
+```
+
+Only single-character short names take part in this. A token that names an
+option exactly is always resolved as that option first, so a multi-character
+short name like `th` keeps working, and so does a long name given with a single
+dash. If any letter of a bundle is not a known short option, the whole token is
+rejected — nothing in it is applied.
+
 ### Positional arguments
 
 Positional arguments are non-flag tokens matched by position. Build them with

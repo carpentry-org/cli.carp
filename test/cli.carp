@@ -18,6 +18,29 @@
       (CLI.App.add "commit" &commit-parser)
       (CLI.App.add "push" &push-parser)))
 
+; an ls-like parser the short-flag bundling tests below drive
+
+(def bundling-parser
+  (=> (CLI.new @"bundling")
+      (CLI.add &(CLI.bool "all" "a" "list all"))
+      (CLI.add &(CLI.bool "long" "l" "long format"))
+      (CLI.add &(CLI.bool "verbose" "v" "be verbose"))
+      (CLI.add &(CLI.int "num" "n" "a number" false))))
+
+; `th` is a two-character short name, so `-th` must stay an exact hit
+
+(def exact-parser
+  (=> (CLI.new @"exact")
+      (CLI.add &(CLI.bool "all" "a" "list all"))
+      (CLI.add &(CLI.bool "hat" "t" "wear a hat"))
+      (CLI.add &(CLI.str "thing" "th" "a thing" false))))
+
+(def strict-parser
+  (=> (CLI.new @"strict")
+      (CLI.add &(CLI.bool "all" "a" "list all"))
+      (CLI.add &(CLI.str "mode" "m" "a mode" true))
+      (CLI.add &(CLI.str "kind" "k" "a kind" false @"x" &[@"x" @"y"]))))
+
 ; `CLI.parse-from` is internal, so the flat-parser regression tests below reach
 ; it through a one-subcommand `App`: prepend a dummy subcommand name, dispatch,
 ; and collapse the `Dispatch` back to the `Result` shape those assertions expect.
@@ -606,6 +629,239 @@
         (assert-true test false "option then -- then -x unexpectedly errored")))
 
   ; ---------------------------------------------------------------------------
+  ; Short flag bundling
+  ; ---------------------------------------------------------------------------
+
+  (let-do [res (flat-parse &bundling-parser &[@"-av"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "all"))
+                   "-av sets the first bundled boolean")]
+          (assert-equal &t
+            "true"
+            &(CLI.Type.str &(Map.get &m "verbose"))
+            "-av sets the second bundled boolean"))
+      (Result.Error _) (assert-true test false "-av unexpectedly errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-alv"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "all"))
+                   "-alv sets all")]
+          (set! t
+                (assert-equal &t
+                  "true"
+                  &(CLI.Type.str &(Map.get &m "long"))
+                  "-alv sets long"))
+          (assert-equal &t
+            "true"
+            &(CLI.Type.str &(Map.get &m "verbose"))
+            "-alv sets verbose"))
+      (Result.Error _) (assert-true test false "-alv unexpectedly errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-avn5"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "verbose"))
+                   "-avn5 sets the booleans before the value option")]
+          (assert-equal &t
+            "5"
+            &(CLI.Type.str &(Map.get &m "num"))
+            "-avn5 reads the rest of the token as the value"))
+      (Result.Error _) (assert-true test false "-avn5 unexpectedly errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-avn" @"5"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "all"))
+                   "-avn 5 sets the bundled booleans")]
+          (assert-equal &t
+            "5"
+            &(CLI.Type.str &(Map.get &m "num"))
+            "-avn 5 reads the next token as the value"))
+      (Result.Error _) (assert-true test false "-avn 5 unexpectedly errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-n5"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "5"
+          &(CLI.Type.str &(Map.get &m "num"))
+          "-n5 attaches the value to a lone short option")
+      (Result.Error _) (assert-true test false "-n5 unexpectedly errored")))
+
+  ; an unknown letter fails the whole token, and nothing in it is applied
+
+  (let-do [res (flat-parse &bundling-parser &[@"-avq"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Unknown option: -avq"
+          &e
+          "an unknown letter fails the bundle by its full token")
+      (Result.Success _) (assert-true test false "-avq should have errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-qav"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Unknown option: -qav"
+          &e
+          "an unknown leading letter fails the bundle too")
+      (Result.Success _) (assert-true test false "-qav should have errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-avn"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "No value for: n"
+          &e
+          "a bundle ending in a value option with no value names that option")
+      (Result.Success _)
+        (assert-true test false "-avn without a value should have errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-h"])]
+    (match res
+      (Result.Error e) (assert-equal test "" &e "-h still signals help")
+      (Result.Success _)
+        (assert-true test false "-h should have signalled help")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-ah"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test "" &e "an h inside a bundle signals help")
+      (Result.Success _)
+        (assert-true test false "-ah should have signalled help")))
+
+  ; a bundle is only decomposed when the whole token matches nothing exactly
+
+  (let-do [res (flat-parse &exact-parser &[@"-th" @"hat"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "hat"
+                   &(CLI.Type.str &(Map.get &m "thing"))
+                   "a multi-character short name wins over decomposition")]
+          (assert-false &t
+            (Map.contains? &m "hat")
+            "the exact hit does not also set the letters it is made of"))
+      (Result.Error _) (assert-true test false "-th unexpectedly errored")))
+
+  (let-do [res (flat-parse &exact-parser &[@"-ta"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "true"
+          &(CLI.Type.str &(Map.get &m "hat"))
+          "a token with no exact match is decomposed")
+      (Result.Error _) (assert-true test false "-ta unexpectedly errored")))
+
+  ; a double dash is a long option, never a bundle
+
+  (let-do [res (flat-parse &bundling-parser &[@"--av"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Unknown option: --av"
+          &e
+          "a double-dashed token is not decomposed")
+      (Result.Success _) (assert-true test false "--av should have errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test "Unknown option: -" &e "a bare - is still unknown")
+      (Result.Success _) (assert-true test false "- should have errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.bool "all" "a" "list all"))
+                 (CLI.add-pos &(CLI.pos-str "target" "a target" true)))
+           res (flat-parse &p &[@"--" @"-av"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "-av"
+                   &(CLI.Type.str &(Map.get &m "target"))
+                   "a bundle after -- is a positional")]
+          (assert-false &t
+            (Map.contains? &m "all")
+            "a bundle after -- sets no flags"))
+      (Result.Error _)
+        (assert-true test false "-- then -av unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add &(CLI.bool "all" "a" "list all"))
+                 (CLI.add-pos &(CLI.pos-int "n" "a number" true)))
+           res (flat-parse &p &[@"-5"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-5"
+          &(CLI.Type.str &(Map.get &m "n"))
+          "a negative number is a positional, not a bundle")
+      (Result.Error _) (assert-true test false "-5 unexpectedly errored")))
+
+  ; a value option in the middle of a bundle swallows the rest, as getopt does
+
+  (let-do [res (flat-parse &strict-parser &[@"-amb"])]
+    (match res
+      (Result.Success m)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get &m "all"))
+                   "-amb sets the leading boolean")]
+          (assert-equal &t
+            "b"
+            &(CLI.Type.str &(Map.get &m "mode"))
+            "-amb gives the rest of the token to the value option"))
+      (Result.Error _) (assert-true test false "-amb unexpectedly errored")))
+
+  (let-do [res (flat-parse &strict-parser &[@"-am" @"b"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "b"
+          &(CLI.Type.str &(Map.get &m "mode"))
+          "a bundle satisfies a required option")
+      (Result.Error _) (assert-true test false "-am b unexpectedly errored")))
+
+  (let-do [res (flat-parse &strict-parser &[@"-a"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Required option missing: --mode"
+          &e
+          "a bundle does not exempt a required option")
+      (Result.Success _)
+        (assert-true test false "a missing required option should have errored")))
+
+  (let-do [res (flat-parse &strict-parser &[@"-amb" @"-kz"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Option kind received an invalid option z (Options are x, y)"
+          &e
+          "a value set through a bundle is validated against its options")
+      (Result.Success _) (assert-true test false "-kz should have errored")))
+
+  (let-do [res (flat-parse &strict-parser &[@"-amb" @"-ky"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "y"
+          &(CLI.Type.str &(Map.get &m "kind"))
+          "a valid value set through a bundle passes validation")
+      (Result.Error _) (assert-true test false "-ky unexpectedly errored")))
+
+  ; ---------------------------------------------------------------------------
   ; App / subcommands
   ; ---------------------------------------------------------------------------
 
@@ -665,6 +921,20 @@
         (assert-true test
           false
           "subcommand boolean --flag=false unexpectedly errored")))
+
+  (let-do [app (=> (CLI.App.new @"a lister") (CLI.App.add "ls" &bundling-parser))
+           res (CLI.App.parse-from &app &[@"ls" @"-avn5"])]
+    (match res
+      (CLI.Dispatch.Parsed pair)
+        (let-do [t (assert-equal test
+                   "true"
+                   &(CLI.Type.str &(Map.get (Pair.b &pair) "all"))
+                   "a subcommand accepts a bundle")]
+          (assert-equal &t
+            "5"
+            &(CLI.Type.str &(Map.get (Pair.b &pair) "num"))
+            "a subcommand accepts an attached value in a bundle"))
+      _ (assert-true test false "ls -avn5 unexpectedly errored")))
 
   (let-do [res (CLI.App.parse-from &git &[@"frobnicate"])]
     (match res

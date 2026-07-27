@@ -176,6 +176,14 @@ please use [`pos-str`](#pos-str), [`pos-int`](#pos-int), or
               (break))))
         found))
 
+    (defn short? [m s]
+      (let-do [found false
+               vs (values m)]
+        (for [i 0 (length vs)]
+          (let [e (unsafe-nth vs i)]
+            (when-do (= (Pair.b (Pair.a e)) s) (set! found true) (break))))
+        found))
+
     (defn set? [m s]
       (let-do [found false
                vs (values m)]
@@ -376,6 +384,21 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                      (Positional.description pos))))
             (IO.println ""))))))
 
+  (private bundle-stop)
+  (hidden bundle-stop)
+  ; index of the first character of `flag` that is not a boolean short option,
+  ; or its length if they all are
+  (defn bundle-stop [values flag]
+    (let-do [n (String.length flag)
+             stop n]
+      (for [i 0 n]
+        (let [c (String.byte-slice flag i (Int.inc i))]
+          (unless-do (and (CmdMap.short? values &c)
+                          (CmdMap.type? values &c &(Tag.TBoolean)))
+            (set! stop i)
+            (break))))
+      stop))
+
   (hidden parse-from)
   ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
   ; array against `p`. Non-flag tokens fill positionals in order; flags and
@@ -436,6 +459,45 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                             (break))))
                   (or (= k "help") (= k "h"))
                     (do (set! res (Result.Error @"")) (break))
+                  (and (<= (length &splt) 1)
+                       (not (empty? k))
+                       (not (starts-with? x "--")))
+                    (let [n (String.length k)
+                          stop (bundle-stop &values k)
+                          c (if (< stop n)
+                            (String.byte-slice k stop (Int.inc stop))
+                            @"")
+                          rest (if (< stop n)
+                            (String.byte-slice k (Int.inc stop) n)
+                            @"")
+                          known (or (= stop n) (CmdMap.short? &values &c))]
+                      (cond
+                        (and (not known) (= &c "h"))
+                          (do (set! res (Result.Error @"")) (break))
+                        (not known)
+                          (do
+                            (set! res
+                                  (Result.Error (fmt "Unknown option: %s" x)))
+                            (break))
+                        (do
+                          (for [j 0 stop]
+                            (CmdMap.put! &values
+                                         &(String.byte-slice k j (Int.inc j))
+                                         "true"))
+                          (cond
+                            (= stop n)
+                              (when (Maybe.just? &v) (set! i (Int.dec i)))
+                            (not (empty? &rest))
+                              (do
+                                (when (Maybe.just? &v) (set! i (Int.dec i)))
+                                (CmdMap.put! &values &c &rest))
+                            (match v
+                              (Maybe.Just val) (CmdMap.put! &values &c &val)
+                              (Maybe.Nothing)
+                                (do
+                                  (set! res
+                                        (Result.Error (fmt "No value for: %s" &c)))
+                                  (break)))))))
                   (do
                     (set! res (Result.Error (fmt "Unknown option: %s" x)))
                     (break))))
@@ -519,6 +581,13 @@ flags and positionals can be interleaved freely. A bare `--` ends option
 parsing — every following token becomes a positional even if it starts with `-`
 — and a token shaped like a negative number (`-5`, `-3.14`) is a positional, not
 an unknown option.
+
+A single-dash token that matches no option exactly is decomposed into
+single-character short options, so `-av` is `-a -v`. Booleans continue the
+bundle; the first option that takes a value ends it and reads the rest of the
+token as its value, or the next token if nothing is left (`-n5`, `-avn5`,
+`-avn 5`). If any letter is not a known short option the whole token is
+rejected.
 
 On failure it returns an `Error` with a message — except that an *empty* error
 message means `--help` (or `-h`) was requested. Override that flag if you don’t
