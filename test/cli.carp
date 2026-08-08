@@ -54,6 +54,49 @@
       (CLI.Dispatch.CommandHelp _) (Result.Error @"")
       (CLI.Dispatch.AppHelp) (Result.Error @""))))
 
+; the completion tests below assert on generated script text; `String.contains?`
+; takes a character, so substring search is spelled out here
+
+(defn has? [hay needle]
+  (let-do [found false
+           n (String.length needle)
+           m (String.length hay)]
+    (when (<= n m)
+      (for [i 0 (Int.inc (- m n))]
+        (when-do (= &(String.byte-slice hay i (+ i n)) needle)
+          (set! found true)
+          (break))))
+    found))
+
+; descriptions and declared values here are deliberately hostile: quotes,
+; brackets, colons, dollars, backticks and a value with a space in it
+
+(def completion-parser
+  (=> (CLI.new @"a tool")
+      (CLI.add &(CLI.bool "verbose" "v" "be verbose"))
+      (CLI.add &(CLI.str "out" "o" "where to write" false))
+      (CLI.add
+        &(CLI.str "mode"
+                  ""
+                  "how to run: it's [odd] $HOME `id`"
+                  false
+                  @"fast"
+                  &[@"fast" @"slow" @"two words" @"$HOME"]))
+      (CLI.add-pos &(CLI.pos-str "file" "a file" false))))
+
+(def completion-app
+  (=> (CLI.App.new @"a tool")
+      (CLI.App.add "run" &completion-parser)
+      (CLI.App.add "stop" &(CLI.new @"stop it: [now]"))))
+
+(defn completion-bash [] (CLI.Completion.bash &completion-parser "my-tool"))
+
+(defn completion-zsh [] (CLI.Completion.zsh &completion-parser "my-tool"))
+
+(defn completion-app-bash [] (CLI.Completion.App.bash &completion-app "my-tool"))
+
+(defn completion-app-zsh [] (CLI.Completion.App.zsh &completion-app "my-tool"))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -996,4 +1039,90 @@
           "Expected a subcommand, got option: -x"
           &e
           "App rejects a leading option that is not a subcommand")
-      _ (assert-true test false "leading option should have failed"))))
+      _ (assert-true test false "leading option should have failed")))
+
+  ; --- Completion.bash ---
+
+  (assert-true test
+    (has? &(completion-bash) "_my_tool_completion() {")
+    "bash names its function after the program, with unsafe characters mapped")
+
+  (assert-true test
+    (has? &(completion-bash) "'--verbose -v --out -o --mode --help -h'")
+    "bash completes long and short flag names plus --help/-h")
+
+  (assert-true test
+    (has? &(completion-bash) "    --mode)")
+    "bash gives a value-taking flag its own case arm")
+
+  (assert-true test
+    (has? &(completion-bash)
+          "local vals=('fast' 'slow' 'two\\ words' '\\$HOME')")
+    "bash completes the declared value set, one candidate per declared value")
+
+  (assert-true test
+    (has? &(completion-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"    --out|-o)"
+                          @"      COMPREPLY=($(compgen -f -- \"$cur\"))"]))
+    "a flag without a declared value set falls back to file completion")
+
+  (assert-false test
+    (has? &(completion-bash) "be verbose")
+    "bash omits descriptions, which it has nowhere to show")
+
+  ; --- Completion.zsh ---
+
+  (assert-true test
+    (has? &(completion-zsh) "'--verbose[be verbose]' \\")
+    "zsh describes a boolean flag and gives it no value action")
+
+  (assert-true test
+    (has? &(completion-zsh) "'--out[where to write]:value:_files'")
+    "a flag without a declared value set falls back to file completion")
+
+  (assert-true test
+    (has? &(completion-zsh) ":value:(fast slow two\\ words \\$HOME)")
+    "zsh completes the declared value set")
+
+  (assert-true test
+    (has? &(completion-zsh) "it'\\''s")
+    "a single quote in a description is escaped out of its quoting")
+
+  (assert-true test
+    (has? &(completion-zsh) "how to run\\:")
+    "a colon in a description is escaped, so it cannot end the spec field")
+
+  (assert-true test
+    (has? &(completion-zsh) "\\[odd\\]")
+    "brackets in a description are escaped, so they cannot end the description")
+
+  (assert-true test
+    (has? &(completion-zsh) "':file:_files'")
+    "zsh completes positional arguments as file names")
+
+  (assert-true test
+    (has? &(completion-zsh) "'--help[print this help message and exit]'")
+    "zsh completes --help, which every parser accepts")
+
+  (assert-true test
+    (has? &(completion-zsh) "compdef _my_tool 'my-tool'")
+    "zsh registers the completion when the script is sourced")
+
+  ; --- Completion.App ---
+
+  (assert-true test
+    (has? &(completion-app-bash) "'run stop --help -h'")
+    "an App completes subcommand names at the first position")
+
+  (assert-true test
+    (has? &(completion-app-bash) "'--verbose -v --out -o --mode --help -h'")
+    "an App dispatches to the selected subcommand’s flags")
+
+  (assert-true test
+    (has? &(completion-app-zsh) "'stop:stop it\\: \\[now\\]'")
+    "an App describes its subcommands, escaped for the command list")
+
+  (assert-true test
+    (has? &(completion-app-zsh) ":value:(fast slow two\\ words \\$HOME)")
+    "an App dispatches to the selected subcommand’s declared value sets"))
