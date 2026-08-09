@@ -1001,12 +1001,14 @@ that subcommand’s own flags and declared value sets, exactly as
                  cmds (commands-of app)]
           (for [i 0 (length cmds)]
             (let [c (unsafe-nth cmds i)]
-              (set! body
-                    (concat
-                      &[body
-                        [(fmt "    %s)" &(CLI.Completion.word (Pair.a c)))]
-                        (CLI.Completion.bash-body (Box.peek (Pair.b c)) "      ")
-                        [@"      ;;"]]))))
+              (unless (empty? (Pair.a c))
+                (set! body
+                      (concat
+                        &[body
+                          [(fmt "    %s)" &(CLI.Completion.word (Pair.a c)))]
+                          (CLI.Completion.bash-body (Box.peek (Pair.b c))
+                                                    "      ")
+                          [@"      ;;"]])))))
           (String.append
             &(CLI.Completion.lines
               &(concat
@@ -1048,22 +1050,23 @@ continues with that subcommand’s own flags and declared value sets, exactly as
                  arms []
                  cmds (commands-of app)]
           (for [i 0 (length cmds)]
-            (let-do [c (unsafe-nth cmds i)
-                     p (Box.peek (Pair.b c))]
-              (set! descrs
-                    (push-back descrs
-                               (CLI.Completion.quoted
-                                 &(fmt "%s:%s"
-                                       &(CLI.Completion.zsh-desc (Pair.a c))
-                                       &(CLI.Completion.zsh-desc (Parser.description p))))))
-              (set! arms
-                    (concat
-                      &[arms
-                        [(fmt "        %s)" &(CLI.Completion.word (Pair.a c)))
-                         (CLI.Completion.zsh-arguments "-s"
-                                                       &(CLI.Completion.zsh-specs p)
-                                                       "          ")
-                         @"          ;;"]]))))
+            (let [c (unsafe-nth cmds i)
+                  p (Box.peek (Pair.b c))]
+              (unless-do (empty? (Pair.a c))
+                (set! descrs
+                      (push-back descrs
+                                 (CLI.Completion.quoted
+                                   &(fmt "%s:%s"
+                                         &(CLI.Completion.zsh-desc (Pair.a c))
+                                         &(CLI.Completion.zsh-desc (Parser.description p))))))
+                (set! arms
+                      (concat
+                        &[arms
+                          [(fmt "        %s)" &(CLI.Completion.word (Pair.a c)))
+                           (CLI.Completion.zsh-arguments "-s"
+                                                         &(CLI.Completion.zsh-specs p)
+                                                         "          ")
+                           @"          ;;"]])))))
           (String.append
             &(CLI.Completion.lines
               &(concat

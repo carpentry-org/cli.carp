@@ -110,6 +110,11 @@
 (def short-h-app
   (=> (CLI.App.new @"a server") (CLI.App.add "serve" &short-h-parser)))
 
+(def nameless-app
+  (=> (CLI.App.new @"a server")
+      (CLI.App.add "serve" &short-h-parser)
+      (CLI.App.add "" &short-h-parser)))
+
 (defn short-h-zsh [] (CLI.Completion.zsh &short-h-parser "srv"))
 
 (defn own-help-zsh [] (CLI.Completion.zsh &own-help-parser "tool"))
@@ -117,6 +122,10 @@
 (defn nameless-bash [] (CLI.Completion.bash &nameless-parser "tool"))
 
 (defn short-h-app-zsh [] (CLI.Completion.App.zsh &short-h-app "srv"))
+
+(defn nameless-app-bash [] (CLI.Completion.App.bash &nameless-app "tool"))
+
+(defn nameless-app-zsh [] (CLI.Completion.App.zsh &nameless-app "tool"))
 
 ; ---------------------------------------------------------------------------
 ; Type tests
@@ -1184,4 +1193,28 @@
     (has? &(nameless-bash)
           &(String.join &(String.from-chars &[\newline])
                         &[@"  case \"$prev\" in" @"  esac"]))
-    "an option with no long and no short name gets no bash case arm"))
+    "an option with no long and no short name gets no bash case arm")
+
+  ; --- Completion: a subcommand with no name ---
+
+  (assert-false test
+    (has? &(nameless-app-bash)
+          &(String.join &(String.from-chars &[\newline]) &[@"" @"    )"]))
+    "a subcommand with no name gets no bash case arm")
+
+  (assert-true test
+    (has? &(nameless-app-bash) "    serve)")
+    "the named subcommand alongside it keeps its bash case arm")
+
+  (assert-false test
+    (has? &(nameless-app-zsh)
+          &(String.join &(String.from-chars &[\newline]) &[@"" @"        )"]))
+    "a subcommand with no name gets no zsh case arm")
+
+  (assert-false test
+    (has? &(nameless-app-zsh) "':a server'")
+    "a subcommand with no name is left out of the zsh command list")
+
+  (assert-true test
+    (has? &(nameless-app-zsh) "'serve:a server'")
+    "the named subcommand alongside it keeps its zsh command list entry"))
