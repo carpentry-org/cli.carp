@@ -97,6 +97,27 @@
 
 (defn completion-app-zsh [] (CLI.Completion.App.zsh &completion-app "my-tool"))
 
+(def short-h-parser
+  (=> (CLI.new @"a server")
+      (CLI.add &(CLI.str "host" "h" "the host to bind" false))))
+
+(def own-help-parser
+  (=> (CLI.new @"a tool") (CLI.add &(CLI.bool "help" "" "show usage and exit"))))
+
+(def nameless-parser
+  (=> (CLI.new @"a tool") (CLI.add &(CLI.str "" "" "no names at all" false))))
+
+(def short-h-app
+  (=> (CLI.App.new @"a server") (CLI.App.add "serve" &short-h-parser)))
+
+(defn short-h-zsh [] (CLI.Completion.zsh &short-h-parser "srv"))
+
+(defn own-help-zsh [] (CLI.Completion.zsh &own-help-parser "tool"))
+
+(defn nameless-bash [] (CLI.Completion.bash &nameless-parser "tool"))
+
+(defn short-h-app-zsh [] (CLI.Completion.App.zsh &short-h-app "srv"))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -1125,4 +1146,42 @@
 
   (assert-true test
     (has? &(completion-app-zsh) ":value:(fast slow two\\ words \\$HOME)")
-    "an App dispatches to the selected subcommand’s declared value sets"))
+    "an App dispatches to the selected subcommand’s declared value sets")
+
+  ; --- Completion: flags the parser declares itself ---
+
+  (assert-false test
+    (has? &(short-h-zsh) "'-h[print this help message and exit]'")
+    "zsh leaves -h alone when the parser already uses it for something else")
+
+  (assert-true test
+    (has? &(short-h-zsh) "'-h[the host to bind]:value:_files'")
+    "the parser’s own -h keeps its meaning and its value action")
+
+  (assert-true test
+    (has? &(short-h-zsh) "'--help[print this help message and exit]'")
+    "zsh still adds --help, which that parser does not declare")
+
+  (assert-true test
+    (has? &(short-h-app-zsh)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"            '-h[the host to bind]:value:_files' \\"
+                          @"            '--help[print this help message and exit]'"
+                          @"          ;;"]))
+    "an App subcommand arm dedups -h the same way a bare Parser does")
+
+  (assert-false test
+    (has? &(own-help-zsh) "'--help[print this help message and exit]'")
+    "zsh dedups --help on the flag name, not on the description it renders")
+
+  (assert-true test
+    (has? &(own-help-zsh) "'-h[print this help message and exit]'")
+    "-h is still added when the parser declares only --help")
+
+  ; --- Completion: an option with neither name ---
+
+  (assert-true test
+    (has? &(nameless-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"  case \"$prev\" in" @"  esac"]))
+    "an option with no long and no short name gets no bash case arm"))

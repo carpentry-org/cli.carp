@@ -800,12 +800,18 @@ the `App` `app`, or an error if there is no such subcommand.")
           (set! ns (push-back ns (fmt "-%s" (Option.short o)))))
         ns))
 
-    (private all-flags)
-    (hidden all-flags)
-    (defn all-flags [p]
+    (private declared-flags)
+    (hidden declared-flags)
+    (defn declared-flags [p]
       (let-do [ns []]
         (for [i 0 (length (Parser.options p))]
           (set! ns (concat &[ns (flag-names (unsafe-nth (Parser.options p) i))])))
+        ns))
+
+    (private all-flags)
+    (hidden all-flags)
+    (defn all-flags [p]
+      (let-do [ns (declared-flags p)]
         (unless (contains? &ns "--help") (set! ns (push-back ns @"--help")))
         (unless (contains? &ns "-h") (set! ns (push-back ns @"-h")))
         ns))
@@ -834,16 +840,16 @@ the `App` `app`, or an error if there is no such subcommand.")
     (defn bash-arms [p pre]
       (let-do [out []]
         (for [i 0 (length (Parser.options p))]
-          (let [o (unsafe-nth (Parser.options p) i)]
-            (when (CLI.option-takes-value? o)
+          (let [o (unsafe-nth (Parser.options p) i)
+                names (flag-names o)]
+            (when (and (CLI.option-takes-value? o) (not (empty? &names)))
               (set! out
                     (concat
                       &[out
                         (indent-lines pre
                                       &(concat
                                         &[[(fmt "  %s)"
-                                                &(String.join "|"
-                                                              &(flag-names o)))]
+                                                &(String.join "|" &names))]
                                           (bash-values &(CLI.option-value-strings o))
                                           [@"    return 0" @"    ;;"]]))])))))
         out))
@@ -893,6 +899,7 @@ Flag descriptions are not part of the output: bash has nowhere to show them.")
     (hidden zsh-specs)
     (defn zsh-specs [p]
       (let-do [out []
+               declared (declared-flags p)
                opts (Parser.options p)
                poss (Parser.positionals p)]
         (for [i 0 (length opts)]
@@ -911,12 +918,13 @@ Flag descriptions are not part of the output: bash has nowhere to show them.")
                                        (unsafe-nth &names j)
                                        &(zsh-desc (Option.description o))
                                        &action)))))))
-        (unless (contains? &out "'--help[print this help message and exit]'")
+        (unless (contains? &declared "--help")
           (set! out
                 (push-back out
                            (quoted &(fmt "--help[%s]" &(zsh-desc (help-text)))))))
-        (set! out
-              (push-back out (quoted &(fmt "-h[%s]" &(zsh-desc (help-text))))))
+        (unless (contains? &declared "-h")
+          (set! out
+                (push-back out (quoted &(fmt "-h[%s]" &(zsh-desc (help-text)))))))
         (for [i 0 (length poss)]
           (let [pos (unsafe-nth poss i)]
             (set! out
