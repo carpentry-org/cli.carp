@@ -822,16 +822,16 @@ the `App` `app`, or an error if there is no such subcommand.")
     (hidden ident)
     (defn ident [prog] (Pattern.substitute #"[^a-zA-Z0-9_]" prog "_" -1))
 
-    (private bash-values)
     (hidden bash-values)
-    ; splitting the word list on newlines instead of on `$IFS` keeps a declared
-    ; value that contains spaces a single candidate
+    ; the list goes in on newlines rather than on `$IFS`, and `mapfile` reads
+    ; the results back out as whole lines, so a candidate containing a space or
+    ; a glob character stays one literal candidate
     (defn bash-values [vs]
       (if (empty? vs)
-        [@"    COMPREPLY=($(compgen -f -- \"$cur\"))"]
-        [@"    local IFS=$'\\n'"
-         (fmt "    local vals=(%s)" &(quoted-words vs))
-         @"    COMPREPLY=($(compgen -W \"${vals[*]}\" -- \"$cur\"))"]))
+        [@"mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]
+        [@"local IFS=$'\\n'"
+         (fmt "local vals=(%s)" &(quoted-words vs))
+         @"mapfile -t COMPREPLY < <(compgen -W \"${vals[*]}\" -- \"$cur\")"]))
 
     (private bash-arms)
     (hidden bash-arms)
@@ -850,7 +850,8 @@ the `App` `app`, or an error if there is no such subcommand.")
                                       &(concat
                                         &[[(fmt "  %s)"
                                                 &(String.join "|" &names))]
-                                          (bash-values &(CLI.option-value-strings o))
+                                          (indent-lines "    "
+                                                        &(bash-values &(CLI.option-value-strings o)))
                                           [@"    return 0" @"    ;;"]]))])))))
         out))
 
@@ -860,14 +861,11 @@ the `App` `app`, or an error if there is no such subcommand.")
         &[(indent-lines pre &[@"case \"$prev\" in"])
           (bash-arms p pre)
           (indent-lines pre
-                        &[@"esac"
-                          @"if [[ \"$cur\" == -* ]]; then"
-                          (fmt
-                            "  COMPREPLY=($(compgen -W %s -- \"$cur\"))"
-                            &(quoted &(word-list &(all-flags p))))
-                          @"  return 0"
-                          @"fi"
-                          @"COMPREPLY=($(compgen -f -- \"$cur\"))"])]))
+                        &(concat
+                          &[[@"esac" @"if [[ \"$cur\" == -* ]]; then"]
+                            (indent-lines "  " &(bash-values &(all-flags p)))
+                            [@"  return 0" @"fi"]
+                            (bash-values &[])]))]))
 
     (doc bash "generates a bash completion script for the `Parser` `p`, to be
 installed for the program called `prog`.
@@ -878,7 +876,9 @@ Anything else — the value of a flag without a declared value set, and every
 positional argument — falls back to the shell’s own file name completion, which
 is what a user expects when the library knows nothing more specific.
 
-Flag descriptions are not part of the output: bash has nowhere to show them.")
+Flag descriptions are not part of the output: bash has nowhere to show them.
+
+The script uses `mapfile`, so it needs bash 4 or newer.")
     (defn bash [p prog]
       (let [f (fmt "_%s_completion" &(ident prog))]
         (String.append
@@ -994,7 +994,9 @@ installed for the program called `prog`.
 The first word completes to the registered subcommand names (plus
 `--help`/`-h`); after a subcommand has been given, completion continues with
 that subcommand’s own flags and declared value sets, exactly as
-[`bash`](#bash) does for a single `Parser`.")
+[`bash`](#bash) does for a single `Parser`.
+
+The script uses `mapfile`, so it needs bash 4 or newer.")
       (defn bash [app prog]
         (let-do [f (fmt "_%s_completion" &(ident prog))
                  body []
@@ -1026,12 +1028,10 @@ that subcommand’s own flags and declared value sets, exactly as
                    @"  done"
                    @"  case \"$cmd\" in"]
                   body
-                  [@"    *)"
-                   (fmt
-                     "      COMPREPLY=($(compgen -W %s -- \"$cur\"))"
-                     &(CLI.Completion.quoted
-                       &(CLI.Completion.word-list &(subcommand-words app))))
-                   @"      ;;"
+                  [@"    *)"]
+                  (CLI.Completion.indent-lines "      "
+                                               &(CLI.Completion.bash-values &(subcommand-words app)))
+                  [@"      ;;"
                    @"  esac"
                    @"}"
                    (fmt "complete -F %s %s" &f &(CLI.Completion.quoted prog))]]))

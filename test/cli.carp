@@ -127,6 +127,22 @@
 
 (defn nameless-app-zsh [] (CLI.Completion.App.zsh &nameless-app "tool"))
 
+(def glob-parser
+  (=> (CLI.new @"a tool")
+      (CLI.add
+        &(CLI.str "mode"
+                  "m"
+                  "the mode"
+                  false
+                  @"plain"
+                  &[@"a*b" @"two words" @"plain" @"*"]))))
+
+(def spaced-app (=> (CLI.App.new @"a tool") (CLI.App.add "run it" &glob-parser)))
+
+(defn glob-bash [] (CLI.Completion.bash &glob-parser "tool"))
+
+(defn spaced-app-bash [] (CLI.Completion.App.bash &spaced-app "tool"))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -1078,7 +1094,8 @@
     "bash names its function after the program, with unsafe characters mapped")
 
   (assert-true test
-    (has? &(completion-bash) "'--verbose -v --out -o --mode --help -h'")
+    (has? &(completion-bash)
+          "local vals=('--verbose' '-v' '--out' '-o' '--mode' '--help' '-h')")
     "bash completes long and short flag names plus --help/-h")
 
   (assert-true test
@@ -1094,7 +1111,7 @@
     (has? &(completion-bash)
           &(String.join &(String.from-chars &[\newline])
                         &[@"    --out|-o)"
-                          @"      COMPREPLY=($(compgen -f -- \"$cur\"))"]))
+                          @"      mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]))
     "a flag without a declared value set falls back to file completion")
 
   (assert-false test
@@ -1142,11 +1159,12 @@
   ; --- Completion.App ---
 
   (assert-true test
-    (has? &(completion-app-bash) "'run stop --help -h'")
+    (has? &(completion-app-bash) "local vals=('run' 'stop' '--help' '-h')")
     "an App completes subcommand names at the first position")
 
   (assert-true test
-    (has? &(completion-app-bash) "'--verbose -v --out -o --mode --help -h'")
+    (has? &(completion-app-bash)
+          "local vals=('--verbose' '-v' '--out' '-o' '--mode' '--help' '-h')")
     "an App dispatches to the selected subcommand’s flags")
 
   (assert-true test
@@ -1217,4 +1235,28 @@
 
   (assert-true test
     (has? &(nameless-app-zsh) "'serve:a server'")
-    "the named subcommand alongside it keeps its zsh command list entry"))
+    "the named subcommand alongside it keeps its zsh command list entry")
+
+  ; --- Completion: what bash does to a compgen result ---
+
+  (assert-false test
+    (has? &(completion-bash) "COMPREPLY=($(")
+    "bash never leaves a compgen result to be split and glob-expanded")
+
+  (assert-false test
+    (has? &(completion-app-bash) "COMPREPLY=($(")
+    "an App script never leaves a compgen result to be split and glob-expanded")
+
+  (assert-true test
+    (has? &(glob-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"      local vals=('a\\*b' 'two\\ words' 'plain' '\\*')"
+                          @"      mapfile -t COMPREPLY < <(compgen -W \"${vals[*]}\" -- \"$cur\")"]))
+    "a declared value containing a glob character is offered, not the files it matches")
+
+  (assert-true test
+    (has? &(spaced-app-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"      local IFS=$'\\n'"
+                          @"      local vals=('run\\ it' '--help' '-h')"]))
+    "a subcommand name containing a space is one candidate at the first position"))

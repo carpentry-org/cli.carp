@@ -159,7 +159,8 @@ accepts. `bash` and `zsh` are supported:
 That prints a script you can install the usual way — `mytool --completion bash
 > /etc/bash_completion.d/mytool`, or straight into your shell with `source <(mytool
 --completion bash)`. The zsh counterpart is `CLI.Completion.zsh`, and it works
-both as an autoloaded `#compdef` file and sourced directly.
+both as an autoloaded `#compdef` file and sourced directly. The bash script
+uses `mapfile`, so it needs bash 4 or newer.
 
 With that installed, `mytool -<TAB>` offers `--verbose -v --out -o --mode -m
 --help -h`, and `mytool --mode <TAB>` offers exactly `fast` and `slow`, because
@@ -184,8 +185,9 @@ quoted and escaped for the target shell. A description containing quotes,
 brackets, backslashes or dollar signs cannot break the generated script, and a
 declared value like `$HOME` or `` `id` `` is offered as that literal text rather
 than being expanded or run. A declared value containing spaces stays a single
-completion candidate. (bash completion has nowhere to show descriptions, so the
-bash script omits them.)
+completion candidate, and one containing `*` or `?` is offered as itself rather
+than as the file names it happens to match. (bash completion has nowhere to
+show descriptions, so the bash script omits them.)
 
 <hr/>
 
