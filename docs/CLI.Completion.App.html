@@ -1,0 +1,136 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo">
+                <a href="">
+                    <img src="">
+                </a>
+                <div class="title">
+                    cli
+                </div>
+                <div class="index">
+                    <ul>
+                        <li>
+                            <details>
+                                <summary>
+                                    <a href="CLI.html">
+                                        CLI
+                                    </a>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a href="CLI.App.html">
+                                            App
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <details>
+                                            <summary>
+                                                <a href="CLI.Completion.html">
+                                                    Completion
+                                                </a>
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a href="CLI.Completion.App.html">
+                                                        App
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Dispatch.html">
+                                            Dispatch
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Option.html">
+                                            Option
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Parser.html">
+                                            Parser
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="CLI.Positional.html">
+                                            Positional
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="module">
+                <h1>
+                    CLI.Completion.App
+                </h1>
+                <div class="module-description">
+                    
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#bash">
+                        <h3 id="bash">
+                            bash
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref String b)] String)
+                    </p>
+                    <pre class="args">
+                        (bash app prog)
+                    </pre>
+                    <p class="doc">
+                        <p>generates a bash completion script for the <code>App</code> <code>app</code>, to be
+installed for the program called <code>prog</code>.</p>
+<p>The first word completes to the registered subcommand names (plus
+<code>--help</code>/<code>-h</code>); after a subcommand has been given, completion continues with
+that subcommand’s own flags and declared value sets, exactly as
+<a href="#bash"><code>bash</code></a> does for a single <code>Parser</code>.</p>
+<p>The script uses <code>mapfile</code>, so it needs bash 4 or newer.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#zsh">
+                        <h3 id="zsh">
+                            zsh
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref String b)] String)
+                    </p>
+                    <pre class="args">
+                        (zsh app prog)
+                    </pre>
+                    <p class="doc">
+                        <p>generates a zsh completion script for the <code>App</code> <code>app</code>, to be
+installed for the program called <code>prog</code>.</p>
+<p>The first word completes to the registered subcommand names, each shown with
+its parser’s description; after a subcommand has been given, completion
+continues with that subcommand’s own flags and declared value sets, exactly as
+<a href="#zsh"><code>zsh</code></a> does for a single <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

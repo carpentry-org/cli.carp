@@ -1,4 +1,4 @@
-(load "CLI.carp")
+(load "cli.carp")
 
 (defndynamic gendocs []
   (do

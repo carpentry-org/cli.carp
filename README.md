@@ -139,6 +139,56 @@ instead (`mytool commit --verbose`).
 `CLI.App.usage` lists the registered subcommands with their descriptions, and
 `CLI.App.usage-for` prints the detailed usage of a single subcommand.
 
+### Shell completion
+
+The parser already knows every flag name, every declared value set, and — for
+an `App` — every subcommand. `CLI.Completion` turns that into a completion
+script, so the completions cannot drift from the flags your program actually
+accepts. `bash` and `zsh` are supported:
+
+```clojure
+(defn main []
+  (let [p (=> (CLI.new @"my super cool tool")
+              (CLI.add &(CLI.bool "verbose" "v" "be verbose"))
+              (CLI.add &(CLI.str "out" "o" "where to write" false))
+              (CLI.add &(CLI.str "mode" "m" "how to run" false @"fast"
+                                 &[@"fast" @"slow"])))]
+    (IO.println &(CLI.Completion.bash &p "mytool"))))
+```
+
+That prints a script you can install the usual way — `mytool --completion bash
+> /etc/bash_completion.d/mytool`, or straight into your shell with `source <(mytool
+--completion bash)`. The zsh counterpart is `CLI.Completion.zsh`, and it works
+both as an autoloaded `#compdef` file and sourced directly. The bash script
+uses `mapfile`, so it needs bash 4 or newer.
+
+With that installed, `mytool -<TAB>` offers `--verbose -v --out -o --mode -m
+--help -h`, and `mytool --mode <TAB>` offers exactly `fast` and `slow`, because
+that flag declared its value set.
+
+For an `App`, use `CLI.Completion.App.bash` and `CLI.Completion.App.zsh`. They
+complete the registered subcommand names first — with their descriptions, under
+zsh — and once a subcommand has been chosen they continue with *that*
+subcommand’s flags and value sets:
+
+```clojure
+(IO.println &(CLI.Completion.App.zsh &app "mytool"))
+```
+
+Where the library knows nothing more specific — the value of a flag that has no
+declared value set, and every positional argument — the generated script falls
+back to the shell’s own file name completion, which is what a user expects from
+a command line tool. This is consistent across both shells.
+
+Descriptions, flag names and declared values are free-form strings, so they are
+quoted and escaped for the target shell. A description containing quotes,
+brackets, backslashes or dollar signs cannot break the generated script, and a
+declared value like `$HOME` or `` `id` `` is offered as that literal text rather
+than being expanded or run. A declared value containing spaces stays a single
+completion candidate, and one containing `*` or `?` is offered as itself rather
+than as the file names it happens to match. (bash completion has nowhere to
+show descriptions, so the bash script omits them.)
+
 <hr/>
 
 Have fun!

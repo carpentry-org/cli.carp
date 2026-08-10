@@ -709,6 +709,411 @@ the `App` `app`, or an error if there is no such subcommand.")
           (IO.errorln &(fmt "Unknown subcommand: %s" name))
           (CLI.usage (Box.peek (Pair.b (unsafe-nth (commands app) idx)))))))))
 
+(defmodule CLI
+  (use Array)
+
+  (hidden option-takes-value?)
+  (defn option-takes-value? [o] (not (Tag.= (Option.type- o) &(Tag.TBoolean))))
+
+  (hidden option-value-strings)
+  (defn option-value-strings [o]
+    (match @(Option.options o)
+      (Maybe.Just vs) (copy-map &(fn [v] (fmt "%s" v)) &vs)
+      (Maybe.Nothing) []))
+
+  (defmodule Completion
+    (use Array)
+
+    (hidden nl)
+    (defn nl [] (String.from-chars &[\newline]))
+
+    (hidden lines)
+    (defn lines [ls] (String.join &(nl) ls))
+
+    (hidden indent-lines)
+    (defn indent-lines [pre ls]
+      (let-do [out []]
+        (for [i 0 (length ls)]
+          (set! out (push-back out (String.append pre (unsafe-nth ls i)))))
+        out))
+
+    (private one-line)
+    (hidden one-line)
+    (defn one-line [s] (String.join " " &(String.split-by s &[\newline])))
+
+    (hidden quoted)
+    ; ends and restarts the quote around every single quote in `s`
+    (defn quoted [s]
+      (fmt "'%s'" &(String.join "'\\''" &(String.split-by s &[\']))))
+
+    (private escaped)
+    (hidden escaped)
+    (defn escaped [s cs]
+      (let-do [out @s]
+        (for [i 0 (length cs)]
+          (let [c @(unsafe-nth cs i)]
+            (set! out (String.join &(fmt "\\%c" c) &(String.split-by &out &[c])))))
+        out))
+
+    (private safe-char?)
+    (hidden safe-char?)
+    (defn safe-char? [c]
+      (or (Char.alphanum? c) (Array.contains? &[\_ \- \. \/ \: \= \@ \+ \,] &c)))
+
+    (hidden word)
+    ; a word list is re-expanded by `compgen -W` and by zsh’s completion
+    ; actions, so everything outside the safe set is backslash-escaped as well
+    ; as quoted
+    (defn word [s]
+      (let-do [out @""
+               cs (String.chars s)]
+        (for [i 0 (length &cs)]
+          (let [c @(unsafe-nth &cs i)]
+            (set! out
+                  (String.append &out
+                                 &(if (safe-char? c)
+                                   (String.from-chars &[c])
+                                   (fmt "\\%c" c))))))
+        out))
+
+    (hidden word-list)
+    (defn word-list [ws]
+      (let-do [out []]
+        (for [i 0 (length ws)]
+          (set! out (push-back out (word (unsafe-nth ws i)))))
+        (String.join " " &out)))
+
+    (hidden quoted-words)
+    (defn quoted-words [ws]
+      (let-do [out []]
+        (for [i 0 (length ws)]
+          (set! out (push-back out (quoted &(word (unsafe-nth ws i))))))
+        (String.join " " &out)))
+
+    (private flag-names)
+    (hidden flag-names)
+    (defn flag-names [o]
+      (let-do [ns []]
+        (unless (empty? (Option.long o))
+          (set! ns (push-back ns (fmt "--%s" (Option.long o)))))
+        (unless (empty? (Option.short o))
+          (set! ns (push-back ns (fmt "-%s" (Option.short o)))))
+        ns))
+
+    (private declared-flags)
+    (hidden declared-flags)
+    (defn declared-flags [p]
+      (let-do [ns []]
+        (for [i 0 (length (Parser.options p))]
+          (set! ns (concat &[ns (flag-names (unsafe-nth (Parser.options p) i))])))
+        ns))
+
+    (private all-flags)
+    (hidden all-flags)
+    (defn all-flags [p]
+      (let-do [ns (declared-flags p)]
+        (unless (contains? &ns "--help") (set! ns (push-back ns @"--help")))
+        (unless (contains? &ns "-h") (set! ns (push-back ns @"-h")))
+        ns))
+
+    (hidden help-text)
+    (defn help-text [] "print this help message and exit")
+
+    (hidden ident)
+    (defn ident [prog] (Pattern.substitute #"[^a-zA-Z0-9_]" prog "_" -1))
+
+    (hidden bash-values)
+    ; the list goes in on newlines rather than on `$IFS`, and `mapfile` reads
+    ; the results back out as whole lines, so a candidate containing a space or
+    ; a glob character stays one literal candidate
+    (defn bash-values [vs]
+      (if (empty? vs)
+        [@"mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]
+        [@"local IFS=$'\\n'"
+         (fmt "local vals=(%s)" &(quoted-words vs))
+         @"mapfile -t COMPREPLY < <(compgen -W \"${vals[*]}\" -- \"$cur\")"]))
+
+    (private bash-arms)
+    (hidden bash-arms)
+    ; one `case` arm per value-taking flag, so the word after it completes to
+    ; the declared values, or to file names when there are none
+    (defn bash-arms [p pre]
+      (let-do [out []]
+        (for [i 0 (length (Parser.options p))]
+          (let [o (unsafe-nth (Parser.options p) i)
+                names (flag-names o)]
+            (when (and (CLI.option-takes-value? o) (not (empty? &names)))
+              (set! out
+                    (concat
+                      &[out
+                        (indent-lines pre
+                                      &(concat
+                                        &[[(fmt "  %s)"
+                                                &(String.join "|" &names))]
+                                          (indent-lines "    "
+                                                        &(bash-values &(CLI.option-value-strings o)))
+                                          [@"    return 0" @"    ;;"]]))])))))
+        out))
+
+    (hidden bash-body)
+    (defn bash-body [p pre]
+      (concat
+        &[(indent-lines pre &[@"case \"$prev\" in"])
+          (bash-arms p pre)
+          (indent-lines pre
+                        &(concat
+                          &[[@"esac" @"if [[ \"$cur\" == -* ]]; then"]
+                            (indent-lines "  " &(bash-values &(all-flags p)))
+                            [@"  return 0" @"fi"]
+                            (bash-values &[])]))]))
+
+    (doc bash "generates a bash completion script for the `Parser` `p`, to be
+installed for the program called `prog`.
+
+The script completes long and short flag names (including `--help`/`-h`) after
+a leading dash, and completes the declared value set of a flag that has one.
+Anything else — the value of a flag without a declared value set, and every
+positional argument — falls back to the shell’s own file name completion, which
+is what a user expects when the library knows nothing more specific.
+
+Flag descriptions are not part of the output: bash has nowhere to show them.
+
+The script uses `mapfile`, so it needs bash 4 or newer.")
+    (defn bash [p prog]
+      (let [f (fmt "_%s_completion" &(ident prog))]
+        (String.append
+          &(lines
+            &(concat
+              &[[(fmt "# bash completion for %s" prog)
+                 (fmt "%s() {" &f)
+                 @"  local cur prev"
+                 @"  cur=\"${COMP_WORDS[COMP_CWORD]}\""
+                 @"  prev=\"${COMP_WORDS[COMP_CWORD-1]}\""]
+                (bash-body p "  ")
+                [@"}" (fmt "complete -F %s %s" &f &(quoted prog))]]))
+          &(nl))))
+
+    (hidden zsh-desc)
+    (defn zsh-desc [s] (escaped &(one-line s) &[\\ \[ \] \:]))
+
+    (hidden zsh-specs)
+    (defn zsh-specs [p]
+      (let-do [out []
+               declared (declared-flags p)
+               opts (Parser.options p)
+               poss (Parser.positionals p)]
+        (for [i 0 (length opts)]
+          (let [o (unsafe-nth opts i)
+                vs (CLI.option-value-strings o)
+                action (cond
+                  (not (CLI.option-takes-value? o)) @""
+                  (empty? &vs) @":value:_files"
+                  (fmt ":value:(%s)" &(word-list &vs)))
+                names (flag-names o)]
+            (for [j 0 (length &names)]
+              (set! out
+                    (push-back out
+                               (quoted
+                                 &(fmt "%s[%s]%s"
+                                       (unsafe-nth &names j)
+                                       &(zsh-desc (Option.description o))
+                                       &action)))))))
+        (unless (contains? &declared "--help")
+          (set! out
+                (push-back out
+                           (quoted &(fmt "--help[%s]" &(zsh-desc (help-text)))))))
+        (unless (contains? &declared "-h")
+          (set! out
+                (push-back out (quoted &(fmt "-h[%s]" &(zsh-desc (help-text)))))))
+        (for [i 0 (length poss)]
+          (let [pos (unsafe-nth poss i)]
+            (set! out
+                  (push-back out
+                             (quoted
+                               &(fmt ":%s:_files"
+                                     &(zsh-desc (Positional.name pos))))))))
+        out))
+
+    (hidden zsh-arguments)
+    ; `_arguments` and its specs, backslash-continued across lines
+    (defn zsh-arguments [flags specs pre]
+      (String.join &(fmt " \\%s" &(nl))
+                   &(concat
+                     &[[(fmt "%s_arguments %s" pre flags)]
+                       (indent-lines &(fmt "%s  " pre) specs)])))
+
+    (hidden zsh-tail)
+    ; usable both as an autoloaded compdef file and as a sourced script
+    (defn zsh-tail [f prog]
+      [(fmt "if [ \"$funcstack[1]\" = \"%s\" ]; then" f)
+       (fmt "  %s \"$@\"" f)
+       @"else"
+       (fmt "  compdef %s %s" f &(quoted prog))
+       @"fi"])
+
+    (doc zsh "generates a zsh completion script for the `Parser` `p`, to be
+installed for the program called `prog`.
+
+The script completes long and short flag names (including `--help`/`-h`) with
+their descriptions, and completes the declared value set of a flag that has
+one. Anything else — the value of a flag without a declared value set, and
+every positional argument — falls back to the shell’s own file name completion,
+which is what a user expects when the library knows nothing more specific.
+
+The result works both as an autoloaded `#compdef` file and as a script that is
+sourced directly.")
+    (defn zsh [p prog]
+      (let [f (fmt "_%s" &(ident prog))]
+        (String.append
+          &(lines
+            &(concat
+              &[[(fmt "#compdef %s" prog) (fmt "%s() {" &f)]
+                [(zsh-arguments "-s" &(zsh-specs p) "  ")]
+                [@"}"]
+                (zsh-tail &f prog)]))
+          &(nl))))
+
+    (defmodule App
+      (use Array)
+
+      (private commands-of)
+      (hidden commands-of)
+      (defn commands-of [app] (CLI.App.commands app))
+
+      (private subcommand-words)
+      (hidden subcommand-words)
+      (defn subcommand-words [app]
+        (let-do [out []]
+          (for [i 0 (length (commands-of app))]
+            (set! out (push-back out @(Pair.a (unsafe-nth (commands-of app) i)))))
+          (concat &[out [@"--help" @"-h"]])))
+
+      (doc bash "generates a bash completion script for the `App` `app`, to be
+installed for the program called `prog`.
+
+The first word completes to the registered subcommand names (plus
+`--help`/`-h`); after a subcommand has been given, completion continues with
+that subcommand’s own flags and declared value sets, exactly as
+[`bash`](#bash) does for a single `Parser`.
+
+The script uses `mapfile`, so it needs bash 4 or newer.")
+      (defn bash [app prog]
+        (let-do [f (fmt "_%s_completion" &(ident prog))
+                 body []
+                 cmds (commands-of app)]
+          (for [i 0 (length cmds)]
+            (let [c (unsafe-nth cmds i)]
+              (unless (empty? (Pair.a c))
+                (set! body
+                      (concat
+                        &[body
+                          [(fmt "    %s)" &(CLI.Completion.word (Pair.a c)))]
+                          (CLI.Completion.bash-body (Box.peek (Pair.b c))
+                                                    "      ")
+                          [@"      ;;"]])))))
+          (String.append
+            &(CLI.Completion.lines
+              &(concat
+                &[[(fmt "# bash completion for %s" prog)
+                   (fmt "%s() {" &f)
+                   @"  local cur prev cmd i"
+                   @"  cur=\"${COMP_WORDS[COMP_CWORD]}\""
+                   @"  prev=\"${COMP_WORDS[COMP_CWORD-1]}\""
+                   @"  cmd=\"\""
+                   @"  for ((i = 1; i < COMP_CWORD; i++)); do"
+                   @"    case \"${COMP_WORDS[i]}\" in"
+                   @"      -*) ;;"
+                   @"      *) cmd=\"${COMP_WORDS[i]}\"; break ;;"
+                   @"    esac"
+                   @"  done"
+                   @"  case \"$cmd\" in"]
+                  body
+                  [@"    *)"]
+                  (CLI.Completion.indent-lines "      "
+                                               &(CLI.Completion.bash-values &(subcommand-words app)))
+                  [@"      ;;"
+                   @"  esac"
+                   @"}"
+                   (fmt "complete -F %s %s" &f &(CLI.Completion.quoted prog))]]))
+            &(CLI.Completion.nl))))
+
+      (doc zsh "generates a zsh completion script for the `App` `app`, to be
+installed for the program called `prog`.
+
+The first word completes to the registered subcommand names, each shown with
+its parser’s description; after a subcommand has been given, completion
+continues with that subcommand’s own flags and declared value sets, exactly as
+[`zsh`](#zsh) does for a single `Parser`.")
+      (defn zsh [app prog]
+        (let-do [f (fmt "_%s" &(ident prog))
+                 descrs []
+                 arms []
+                 cmds (commands-of app)]
+          (for [i 0 (length cmds)]
+            (let [c (unsafe-nth cmds i)
+                  p (Box.peek (Pair.b c))]
+              (unless-do (empty? (Pair.a c))
+                (set! descrs
+                      (push-back descrs
+                                 (CLI.Completion.quoted
+                                   &(fmt "%s:%s"
+                                         &(CLI.Completion.zsh-desc (Pair.a c))
+                                         &(CLI.Completion.zsh-desc (Parser.description p))))))
+                (set! arms
+                      (concat
+                        &[arms
+                          [(fmt "        %s)" &(CLI.Completion.word (Pair.a c)))
+                           (CLI.Completion.zsh-arguments "-s"
+                                                         &(CLI.Completion.zsh-specs p)
+                                                         "          ")
+                           @"          ;;"]])))))
+          (String.append
+            &(CLI.Completion.lines
+              &(concat
+                &[[(fmt "#compdef %s" prog)
+                   (fmt "%s() {" &f)
+                   @"  local context state state_descr line"
+                   @"  typeset -A opt_args"
+                   @"  local -a commands"
+                   @"  commands=("]
+                  (CLI.Completion.indent-lines "    " &descrs)
+                  [@"  )"
+                   (CLI.Completion.zsh-arguments "-C"
+                                                 &[(CLI.Completion.quoted
+                                                     &(fmt "--help[%s]"
+                                                           &(CLI.Completion.zsh-desc (CLI.Completion.help-text))))
+                                                   (CLI.Completion.quoted
+                                                     &(fmt "-h[%s]"
+                                                           &(CLI.Completion.zsh-desc (CLI.Completion.help-text))))
+                                                   @"'1: :->cmd'"
+                                                   @"'*:: :->args'"]
+                                                 "  ")
+                   @"  case $state in"
+                   @"    cmd)"
+                   @"      _describe -t commands 'command' commands"
+                   @"      ;;"
+                   @"    args)"
+                   @"      case $words[1] in"]
+                  arms
+                  [@"      esac" @"      ;;" @"  esac" @"}"]
+                  (CLI.Completion.zsh-tail &f prog)]))
+            &(CLI.Completion.nl))))))
+
+  (doc Completion "generates shell completion scripts from the same
+[`Parser`](#parser) or [`App`](#app) that does the parsing, so the completions
+cannot drift from the flags the program actually accepts.
+
+```clojure
+(IO.println &(CLI.Completion.bash &p \"mytool\"))
+(IO.println &(CLI.Completion.App.zsh &app \"mytool\"))
+```
+
+`bash` and `zsh` are supported, for a `Parser` and — under
+[`Completion.App`](#completionapp) — for an `App`. Descriptions, flag names and
+declared value sets are quoted and escaped for the target shell, so a
+description containing quotes, backslashes or dollar signs cannot break (or
+escape from) the generated script."))
+
 (definterface to-cli-type (Fn [a] CLI.Type))
 
 (defmodule String
