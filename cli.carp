@@ -826,9 +826,12 @@ the `App` `app`, or an error if there is no such subcommand.")
     ; the list goes in on newlines rather than on `$IFS`, and `mapfile` reads
     ; the results back out as whole lines, so a candidate containing a space or
     ; a glob character stays one literal candidate
+    ;
+    ; only the file arm is marked `-o filenames`: it would mangle a value list
     (defn bash-values [vs]
       (if (empty? vs)
-        [@"mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]
+        [@"compopt -o filenames"
+         @"mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]
         [@"local IFS=$'\\n'"
          (fmt "local vals=(%s)" &(quoted-words vs))
          @"mapfile -t COMPREPLY < <(compgen -W \"${vals[*]}\" -- \"$cur\")"]))

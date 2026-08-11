@@ -1111,6 +1111,7 @@
     (has? &(completion-bash)
           &(String.join &(String.from-chars &[\newline])
                         &[@"    --out|-o)"
+                          @"      compopt -o filenames"
                           @"      mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"]))
     "a flag without a declared value set falls back to file completion")
 
@@ -1259,4 +1260,32 @@
           &(String.join &(String.from-chars &[\newline])
                         &[@"      local IFS=$'\\n'"
                           @"      local vals=('run\\ it' '--help' '-h')"]))
-    "a subcommand name containing a space is one candidate at the first position"))
+    "a subcommand name containing a space is one candidate at the first position")
+
+  ; --- Completion: what bash does to a completed file name ---
+
+  (assert-true test
+    (has? &(completion-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"  compopt -o filenames"
+                          @"  mapfile -t COMPREPLY < <(compgen -f -- \"$cur\")"
+                          @"}"]))
+    "the fallback for a positional argument is marked as file names")
+
+  (assert-true test
+    (has? &(completion-app-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"        --out|-o)" @"          compopt -o filenames"]))
+    "a subcommand’s own file completion is marked as file names")
+
+  (assert-true test
+    (has? &(completion-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"    --mode)" @"      local IFS=$'\\n'"]))
+    "a declared value set is not marked as file names")
+
+  (assert-true test
+    (has? &(completion-app-bash)
+          &(String.join &(String.from-chars &[\newline])
+                        &[@"    *)" @"      local IFS=$'\\n'"]))
+    "the subcommand name list is not marked as file names"))
