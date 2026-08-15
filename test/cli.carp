@@ -143,6 +143,24 @@
 
 (defn spaced-app-bash [] (CLI.Completion.App.bash &spaced-app "tool"))
 
+(defn completion-fish [] (CLI.Completion.fish &completion-parser "my-tool"))
+
+(defn completion-app-fish [] (CLI.Completion.App.fish &completion-app "my-tool"))
+
+(defn short-h-fish [] (CLI.Completion.fish &short-h-parser "srv"))
+
+(defn own-help-fish [] (CLI.Completion.fish &own-help-parser "tool"))
+
+(defn nameless-fish [] (CLI.Completion.fish &nameless-parser "tool"))
+
+(defn nameless-app-fish [] (CLI.Completion.App.fish &nameless-app "tool"))
+
+(defn exact-fish [] (CLI.Completion.fish &exact-parser "tool"))
+
+(defn glob-fish [] (CLI.Completion.fish &glob-parser "tool"))
+
+(defn spaced-app-fish [] (CLI.Completion.App.fish &spaced-app "tool"))
+
 ; ---------------------------------------------------------------------------
 ; Type tests
 ; ---------------------------------------------------------------------------
@@ -1288,4 +1306,115 @@
     (has? &(completion-app-bash)
           &(String.join &(String.from-chars &[\newline])
                         &[@"    *)" @"      local IFS=$'\\n'"]))
-    "the subcommand name list is not marked as file names"))
+    "the subcommand name list is not marked as file names")
+
+  ; --- Completion.fish ---
+
+  ; the whole script is pinned once: it also fixes that a positional argument
+  ; adds no rule at all, since fish already completes files by default
+
+  (assert-equal test
+    &(String.append
+      &(String.join &(String.from-chars &[\newline])
+                    &[@"# fish completion for my-tool"
+                      @"complete -c 'my-tool' -l 'verbose' -s 'v' -d 'be verbose'"
+                      @"complete -c 'my-tool' -l 'out' -s 'o' -d 'where to write' -r"
+                      @"complete -c 'my-tool' -l 'mode' -d 'how to run: it\\'s [odd] $HOME `id`' -x -a 'fast slow two\\\\ words \\\\$HOME'"
+                      @"complete -c 'my-tool' -l 'help' -d 'print this help message and exit'"
+                      @"complete -c 'my-tool' -s 'h' -d 'print this help message and exit'"])
+      &(String.from-chars &[\newline]))
+    &(completion-fish)
+    "fish emits one complete rule per option, and none for a positional")
+
+  (assert-true test
+    (has? &(completion-fish) "-d 'how to run: it\\'s [odd] $HOME `id`'")
+    "a single quote in a description is escaped the one way fish quotes allow")
+
+  (assert-true test
+    (has? &(exact-fish) "complete -c 'tool' -l 'thing' -o 'th' -d 'a thing' -r")
+    "a short name longer than a character is an old-style option, not -s")
+
+  (assert-true test
+    (has? &(exact-fish) "complete -c 'tool' -l 'hat' -s 't' -d 'wear a hat'")
+    "a one-character short name alongside it is still -s")
+
+  (assert-true test
+    (has? &(glob-fish) "-x -a 'a\\\\*b two\\\\ words plain \\\\*'")
+    "a declared value keeping a glob character is offered, not the files it matches")
+
+  (assert-equal test
+    &(String.append
+      &(String.join &(String.from-chars &[\newline])
+                    &[@"# fish completion for tool"
+                      @"complete -c 'tool' -l 'help' -d 'print this help message and exit'"
+                      @"complete -c 'tool' -s 'h' -d 'print this help message and exit'"])
+      &(String.from-chars &[\newline]))
+    &(nameless-fish)
+    "an option with no long and no short name gets no fish rule at all")
+
+  (assert-false test
+    (has? &(short-h-fish) "-s 'h' -d 'print this help message and exit'")
+    "fish leaves -h alone when the parser already uses it for something else")
+
+  (assert-true test
+    (has? &(short-h-fish)
+          "complete -c 'srv' -l 'host' -s 'h' -d 'the host to bind' -r")
+    "the parser’s own -h keeps its meaning and its value flag")
+
+  (assert-true test
+    (has? &(short-h-fish)
+          "complete -c 'srv' -l 'help' -d 'print this help message and exit'")
+    "fish still adds --help, which that parser does not declare")
+
+  (assert-false test
+    (has? &(own-help-fish) "-l 'help' -d 'print this help message and exit'")
+    "fish dedups --help on the flag name, not on the description it renders")
+
+  (assert-true test
+    (has? &(own-help-fish)
+          "complete -c 'tool' -s 'h' -d 'print this help message and exit'")
+    "-h is still added when the parser declares only --help")
+
+  ; --- Completion.App.fish ---
+
+  (assert-true test
+    (has? &(completion-app-fish)
+          "complete -c 'my-tool' -n '__fish_use_subcommand' -f -a 'run' -d 'a tool'")
+    "an App completes described subcommand names, and only those, at the first position")
+
+  (assert-true test
+    (has? &(completion-app-fish)
+          "complete -c 'my-tool' -n '__fish_seen_subcommand_from run' -l 'verbose' -s 'v' -d 'be verbose'")
+    "an App gates each subcommand’s own flags on that subcommand having been seen")
+
+  (assert-true test
+    (has? &(completion-app-fish)
+          "-n '__fish_seen_subcommand_from run' -l 'mode' -d 'how to run: it\\'s [odd] $HOME `id`' -x -a 'fast slow two\\\\ words \\\\$HOME'")
+    "an App dispatches to the selected subcommand’s declared value sets")
+
+  (assert-true test
+    (has? &(completion-app-fish)
+          "complete -c 'my-tool' -n '__fish_use_subcommand' -s 'h' -d 'print this help message and exit'")
+    "an App completes its own --help/-h before a subcommand is given")
+
+  (assert-false test
+    (has? &(nameless-app-fish) "-a '' ")
+    "a subcommand with no name is left out of the fish subcommand list")
+
+  (assert-false test
+    (has? &(nameless-app-fish) "'__fish_seen_subcommand_from '")
+    "and gets no rules of its own")
+
+  (assert-true test
+    (has? &(nameless-app-fish)
+          "complete -c 'tool' -n '__fish_use_subcommand' -f -a 'serve' -d 'a server'")
+    "the named subcommand alongside it keeps its fish rule")
+
+  (assert-true test
+    (has? &(spaced-app-fish) "-f -a 'run\\\\ it' -d 'a tool'")
+    "a subcommand name holding a space is one candidate at the first position")
+
+  (assert-true test
+    (has? &(spaced-app-fish)
+          "-n '__fish_seen_subcommand_from run\\\\ it' -l 'mode'")
+    "and is one argument to the condition that gates its own flags"))
