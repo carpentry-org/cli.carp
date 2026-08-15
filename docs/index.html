@@ -31,6 +31,22 @@
                                         </a>
                                     </li>
                                     <li>
+                                        <details>
+                                            <summary>
+                                                <a href="CLI.Completion.html">
+                                                    Completion
+                                                </a>
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a href="CLI.Completion.App.html">
+                                                        App
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
+                                    </li>
+                                    <li>
                                         <a href="CLI.Dispatch.html">
                                             Dispatch
                                         </a>
@@ -62,7 +78,7 @@
                 </h1>
                 <div class="module-description">
                     <p>is a simple CLI library for Carp.</p>
-<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.2.0&quot;)
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.3.0&quot;)
 
 (defn main []
   (let [p (=&gt; (CLI.new @&quot;My super cool tool!&quot;)
@@ -74,7 +90,7 @@
       (Result.Error msg) (do (IO.errorln &amp;msg) (CLI.usage &amp;p)))))
 </code></pre>
 <h2>Installation</h2>
-<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.2.0&quot;)
+<pre><code class="language-clojure">(load &quot;git@github.com:carpentry-org/cli.carp@0.3.0&quot;)
 </code></pre>
 <h2>Usage</h2>
 <p><code>CLI</code> should be built using combinators, as in the example above. It has, as of
@@ -131,6 +147,38 @@ its own <a href="#parser"><code>Parser</code></a> — the shape of a tool like <
 positionals. Build one with <a href="#appnew"><code>App.new</code></a> and <a href="#appadd"><code>App.add</code></a>, then
 dispatch with <a href="#appparse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
 plain <code>Parser</code> still works exactly as before.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#Completion">
+                        <h3 id="Completion">
+                            <a href="CLI.Completion.html">
+                                Completion
+                            </a>
+                        </h3>
+                    </a>
+                    <div class="description">
+                        module
+                    </div>
+                    <p class="sig">
+                        Module
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>generates shell completion scripts from the same
+<a href="#parser"><code>Parser</code></a> or <a href="#app"><code>App</code></a> that does the parsing, so the completions
+cannot drift from the flags the program actually accepts.</p>
+<pre><code class="language-clojure">(IO.println &amp;(CLI.Completion.bash &amp;p &quot;mytool&quot;))
+(IO.println &amp;(CLI.Completion.App.zsh &amp;app &quot;mytool&quot;))
+</code></pre>
+<p><code>bash</code> and <code>zsh</code> are supported, for a <code>Parser</code> and — under
+<a href="#completionapp"><code>Completion.App</code></a> — for an <code>App</code>. Descriptions, flag names and
+declared value sets are quoted and escaped for the target shell, so a
+description containing quotes, backslashes or dollar signs cannot break (or
+escape from) the generated script.</p>
 
                     </p>
                 </div>
@@ -383,6 +431,12 @@ flags and positionals can be interleaved freely. A bare <code>--</code> ends opt
 parsing — every following token becomes a positional even if it starts with <code>-</code>
 — and a token shaped like a negative number (<code>-5</code>, <code>-3.14</code>) is a positional, not
 an unknown option.</p>
+<p>A single-dash token that matches no option exactly is decomposed into
+single-character short options, so <code>-av</code> is <code>-a -v</code>. Booleans continue the
+bundle; the first option that takes a value ends it and reads the rest of the
+token as its value, or the next token if nothing is left (<code>-n5</code>, <code>-avn5</code>,
+<code>-avn 5</code>). If any letter is not a known short option the whole token is
+rejected.</p>
 <p>On failure it returns an <code>Error</code> with a message — except that an <em>empty</em> error
 message means <code>--help</code> (or <code>-h</code>) was requested. Override that flag if you don’t
 want the built-in help behaviour.</p>

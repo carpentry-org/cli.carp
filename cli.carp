@@ -1134,7 +1134,7 @@ escape from) the generated script."))
 (doc CLI "is a simple CLI library for Carp.
 
 ```clojure
-(load \"git@github.com:carpentry-org/cli.carp@0.2.0\")
+(load \"git@github.com:carpentry-org/cli.carp@0.3.0\")
 
 (defn main []
   (let [p (=> (CLI.new @\"My super cool tool!\")
@@ -1149,7 +1149,7 @@ escape from) the generated script."))
 ## Installation
 
 ```clojure
-(load \"git@github.com:carpentry-org/cli.carp@0.2.0\")
+(load \"git@github.com:carpentry-org/cli.carp@0.3.0\")
 ```
 
 ## Usage
