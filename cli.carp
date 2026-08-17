@@ -976,6 +976,112 @@ sourced directly.")
                 (zsh-tail &f prog)]))
           &(nl))))
 
+    (hidden fish-quoted)
+    ; inside fish single quotes only `\'` and `\\` are escapes
+    (defn fish-quoted [s] (fmt "'%s'" &(escaped s &[\\ \'])))
+
+    (hidden fish-desc)
+    (defn fish-desc [s] (fish-quoted &(one-line s)))
+
+    (hidden fish-word)
+    ; fish tokenizes `-a` candidates and `-n` conditions a second time
+    (defn fish-word [s] (fish-quoted &(word s)))
+
+    (hidden fish-words)
+    (defn fish-words [ws] (fish-quoted &(word-list ws)))
+
+    (hidden fish-head)
+    (defn fish-head [prog gate]
+      (if (empty? gate)
+        (fmt "complete -c %s" &(fish-quoted prog))
+        (fmt "complete -c %s -n %s" &(fish-quoted prog) &(fish-quoted gate))))
+
+    (hidden fish-gate)
+    (defn fish-gate [name] (fmt "__fish_seen_subcommand_from %s" &(word name)))
+
+    (private fish-names)
+    (hidden fish-names)
+    (defn fish-names [o]
+      (let-do [ns []]
+        (unless (empty? (Option.long o))
+          (set! ns (push-back ns (fmt "-l %s" &(fish-quoted (Option.long o))))))
+        (unless (empty? (Option.short o))
+          (set! ns
+                (push-back ns
+                           (fmt "%s %s"
+                                (if (= 1 (String.length (Option.short o)))
+                                  "-s"
+                                  "-o")
+                                &(fish-quoted (Option.short o))))))
+        ns))
+
+    (private fish-value)
+    (hidden fish-value)
+    ; `-x` is `-r -f`; a bare `-r` takes a value but leaves file completion alone
+    (defn fish-value [o]
+      (let [vs (CLI.option-value-strings o)]
+        (cond
+          (not (CLI.option-takes-value? o)) []
+          (empty? &vs) [@"-r"]
+          [(fmt "-x -a %s" &(fish-words &vs))])))
+
+    (hidden fish-specs)
+    (defn fish-specs [p head]
+      (let-do [out []
+               declared (declared-flags p)
+               opts (Parser.options p)]
+        (for [i 0 (length opts)]
+          (let [o (unsafe-nth opts i)
+                names (fish-names o)]
+            (unless (empty? &names)
+              (set! out
+                    (push-back out
+                               (String.join " "
+                                            &(concat
+                                              &[[@head]
+                                                names
+                                                [(fmt "-d %s"
+                                                      &(fish-desc (Option.description o)))]
+                                                (fish-value o)])))))))
+        (unless (contains? &declared "--help")
+          (set! out
+                (push-back out
+                           (fmt "%s -l %s -d %s"
+                                head
+                                &(fish-quoted "help")
+                                &(fish-desc (help-text))))))
+        (unless (contains? &declared "-h")
+          (set! out
+                (push-back out
+                           (fmt "%s -s %s -d %s"
+                                head
+                                &(fish-quoted "h")
+                                &(fish-desc (help-text))))))
+        out))
+
+    (doc fish "generates a fish completion script for the `Parser` `p`, to be
+installed for the program called `prog`.
+
+The script is a flat list of `complete` rules, one per option: long and short
+flag names (including `--help`/`-h`) with their descriptions, and the declared
+value set of a flag that has one. A flag without a declared value set takes a
+value but keeps fish’s own file name completion, and so does every positional
+argument, which is what a user expects when the library knows nothing more
+specific.
+
+A short name longer than one character is emitted as an old-style single-dash
+option, since fish’s `-s` takes exactly one character.
+
+The result is meant to be dropped into `~/.config/fish/completions/` as
+`prog.fish`, or sourced directly.")
+    (defn fish [p prog]
+      (String.append
+        &(lines
+          &(concat
+            &[[(fmt "# fish completion for %s" prog)]
+              (fish-specs p &(fish-head prog ""))]))
+        &(nl)))
+
     (defmodule App
       (use Array)
 
@@ -1100,6 +1206,52 @@ continues with that subcommand’s own flags and declared value sets, exactly as
                   arms
                   [@"      esac" @"      ;;" @"  esac" @"}"]
                   (CLI.Completion.zsh-tail &f prog)]))
+            &(CLI.Completion.nl))))
+
+      (doc fish "generates a fish completion script for the `App` `app`, to be
+installed for the program called `prog`.
+
+The first word completes to the registered subcommand names, each shown with
+its parser’s description, and to nothing else; once a subcommand has been
+given, that subcommand’s own flags and declared value sets complete, exactly as
+[`fish`](#fish) does for a single `Parser`.")
+      (defn fish [app prog]
+        (let-do [out []
+                 cmds (commands-of app)
+                 top (CLI.Completion.fish-head prog "__fish_use_subcommand")]
+          (for [i 0 (length cmds)]
+            (let [c (unsafe-nth cmds i)]
+              (unless (empty? (Pair.a c))
+                (set! out
+                      (push-back out
+                                 (fmt "%s -f -a %s -d %s"
+                                      &top
+                                      &(CLI.Completion.fish-word (Pair.a c))
+                                      &(CLI.Completion.fish-desc
+                                        (Parser.description (Box.peek (Pair.b c))))))))))
+          (set! out
+                (concat
+                  &[out
+                    [(fmt "%s -l %s -d %s"
+                          &top
+                          &(CLI.Completion.fish-quoted "help")
+                          &(CLI.Completion.fish-desc (CLI.Completion.help-text)))
+                     (fmt "%s -s %s -d %s"
+                          &top
+                          &(CLI.Completion.fish-quoted "h")
+                          &(CLI.Completion.fish-desc (CLI.Completion.help-text)))]]))
+          (for [i 0 (length cmds)]
+            (let [c (unsafe-nth cmds i)]
+              (unless (empty? (Pair.a c))
+                (set! out
+                      (concat
+                        &[out
+                          (CLI.Completion.fish-specs (Box.peek (Pair.b c))
+                                                     &(CLI.Completion.fish-head prog
+                                                                                &(CLI.Completion.fish-gate (Pair.a c))))])))))
+          (String.append
+            &(CLI.Completion.lines
+              &(concat &[[(fmt "# fish completion for %s" prog)] out]))
             &(CLI.Completion.nl))))))
 
   (doc Completion "generates shell completion scripts from the same
@@ -1111,7 +1263,7 @@ cannot drift from the flags the program actually accepts.
 (IO.println &(CLI.Completion.App.zsh &app \"mytool\"))
 ```
 
-`bash` and `zsh` are supported, for a `Parser` and — under
+`bash`, `zsh` and `fish` are supported, for a `Parser` and — under
 [`Completion.App`](#completionapp) — for an `App`. Descriptions, flag names and
 declared value sets are quoted and escaped for the target shell, so a
 description containing quotes, backslashes or dollar signs cannot break (or

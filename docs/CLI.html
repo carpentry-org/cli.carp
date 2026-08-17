@@ -174,7 +174,7 @@ cannot drift from the flags the program actually accepts.</p>
 <pre><code class="language-clojure">(IO.println &amp;(CLI.Completion.bash &amp;p &quot;mytool&quot;))
 (IO.println &amp;(CLI.Completion.App.zsh &amp;app &quot;mytool&quot;))
 </code></pre>
-<p><code>bash</code> and <code>zsh</code> are supported, for a <code>Parser</code> and — under
+<p><code>bash</code>, <code>zsh</code> and <code>fish</code> are supported, for a <code>Parser</code> and — under
 <a href="#completionapp"><code>Completion.App</code></a> — for an <code>App</code>. Descriptions, flag names and
 declared value sets are quoted and escaped for the target shell, so a
 description containing quotes, backslashes or dollar signs cannot break (or

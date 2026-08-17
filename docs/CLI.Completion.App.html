@@ -106,6 +106,31 @@ that subcommand’s own flags and declared value sets, exactly as
                     </p>
                 </div>
                 <div class="binder">
+                    <a class="anchor" href="#fish">
+                        <h3 id="fish">
+                            fish
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref CLI.App a), (Ref String b)] String)
+                    </p>
+                    <pre class="args">
+                        (fish app prog)
+                    </pre>
+                    <p class="doc">
+                        <p>generates a fish completion script for the <code>App</code> <code>app</code>, to be
+installed for the program called <code>prog</code>.</p>
+<p>The first word completes to the registered subcommand names, each shown with
+its parser’s description, and to nothing else; once a subcommand has been
+given, that subcommand’s own flags and declared value sets complete, exactly as
+<a href="#fish"><code>fish</code></a> does for a single <code>Parser</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
                     <a class="anchor" href="#zsh">
                         <h3 id="zsh">
                             zsh

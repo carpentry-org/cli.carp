@@ -144,7 +144,7 @@ instead (`mytool commit --verbose`).
 The parser already knows every flag name, every declared value set, and — for
 an `App` — every subcommand. `CLI.Completion` turns that into a completion
 script, so the completions cannot drift from the flags your program actually
-accepts. `bash` and `zsh` are supported:
+accepts. `bash`, `zsh` and `fish` are supported:
 
 ```clojure
 (defn main []
@@ -162,14 +162,19 @@ That prints a script you can install the usual way — `mytool --completion bash
 both as an autoloaded `#compdef` file and sourced directly. The bash script
 uses `mapfile`, so it needs bash 4 or newer.
 
+`CLI.Completion.fish` emits a flat list of `complete` rules, one per flag, to be
+dropped into `~/.config/fish/completions/mytool.fish` or sourced directly. A
+short name longer than one character becomes an old-style single-dash option,
+because fish’s `-s` takes exactly one character.
+
 With that installed, `mytool -<TAB>` offers `--verbose -v --out -o --mode -m
 --help -h`, and `mytool --mode <TAB>` offers exactly `fast` and `slow`, because
 that flag declared its value set.
 
-For an `App`, use `CLI.Completion.App.bash` and `CLI.Completion.App.zsh`. They
-complete the registered subcommand names first — with their descriptions, under
-zsh — and once a subcommand has been chosen they continue with *that*
-subcommand’s flags and value sets:
+For an `App`, use `CLI.Completion.App.bash`, `CLI.Completion.App.zsh` or
+`CLI.Completion.App.fish`. They complete the registered subcommand names first —
+with their descriptions, under zsh and fish — and once a subcommand has been
+chosen they continue with *that* subcommand’s flags and value sets:
 
 ```clojure
 (IO.println &(CLI.Completion.App.zsh &app "mytool"))
@@ -178,7 +183,7 @@ subcommand’s flags and value sets:
 Where the library knows nothing more specific — the value of a flag that has no
 declared value set, and every positional argument — the generated script falls
 back to the shell’s own file name completion, which is what a user expects from
-a command line tool. This is consistent across both shells.
+a command line tool. This is consistent across all three shells.
 
 Descriptions, flag names and declared values are free-form strings, so they are
 quoted and escaped for the target shell. A description containing quotes,
@@ -187,7 +192,9 @@ declared value like `$HOME` or `` `id` `` is offered as that literal text rather
 than being expanded or run. A declared value containing spaces stays a single
 completion candidate, and one containing `*` or `?` is offered as itself rather
 than as the file names it happens to match. (bash completion has nowhere to
-show descriptions, so the bash script omits them.)
+show descriptions, so the bash script omits them. fish quotes to different rules
+than the POSIX shells, and re-tokenizes its candidate lists a second time, so it
+is escaped separately.)
 
 <hr/>
 
