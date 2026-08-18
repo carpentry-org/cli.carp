@@ -44,6 +44,10 @@ manually.
 Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string `false`.
 
+An option can carry its value in the same token, as `--name=value` or
+`-n=value`. Only the first `=` separates the two, so `--define=x=1` sets
+`define` to `x=1`.
+
 ### Short flag bundling
 
 Short options can be written the way you are used to typing them: `ls -la`,
@@ -77,7 +81,9 @@ Positional arguments are non-flag tokens matched by position. Build them with
 ```
 
 Add them to the parser with `CLI.add-pos`. Flags and positionals can be
-interleaved freely on the command line.
+interleaved freely on the command line. A lone `-` — conventionally standard
+input — is an operand, so it fills a positional instead of being read as an
+option.
 
 Once you’re done building your flag structure, you can run `CLI.parse`. It
 will not abort the program on error, instead it will tell you what went wrong
