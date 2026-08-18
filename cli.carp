@@ -384,6 +384,19 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                      (Positional.description pos))))
             (IO.println ""))))))
 
+  (private split-at-eq)
+  (hidden split-at-eq)
+  ; splits `s` around its first `=`; `Nothing` when it holds none
+  (defn split-at-eq [s]
+    (let-do [n (String.length s)
+             i 0]
+      (while (and (< i n) (/= (String.char-at s i) \=)) (set! i (Int.inc i)))
+      (if (= i n)
+        (Maybe.Nothing)
+        (Maybe.Just
+          (Pair.init (String.byte-slice s 0 i)
+                     (String.byte-slice s (Int.inc i) n))))))
+
   (private bundle-stop)
   (hidden bundle-stop)
   ; index of the first character of `flag` that is not a boolean short option,
@@ -404,11 +417,11 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
   ; array against `p`. Non-flag tokens fill positionals in order; flags and
   ; positionals interleave freely. A bare `--` ends option parsing: it is
   ; consumed and every later token is treated as a positional even if it begins
-  ; with `-`. A token shaped like a negative number (`-` then a digit) is a
-  ; positional too, since options are always named. Returns a `Success` map
-  ; (long option and positional name → value) or an `Error` message — an *empty*
-  ; error message means `--help` was requested. `App` translates that empty-error
-  ; signal into contextual help (see `Dispatch`).
+  ; with `-`. A token shaped like a negative number (`-` then a digit) and a
+  ; lone `-` are positionals too, since options are always named. Returns a
+  ; `Success` map (long option and positional name → value) or an `Error`
+  ; message — an *empty* error message means `--help` was requested. `App`
+  ; translates that empty-error signal into contextual help (see `Dispatch`).
   (defn parse-from [p args]
     (let-do [values (Parser.values p)
              res (the (Result Bool String) (Result.Success true))
@@ -425,50 +438,54 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
             (and (not opts-ended) (= x "--")) (set! opts-ended true)
             (and (not opts-ended)
                  (starts-with? x "-")
+                 (/= x "-")
                  (not (Pattern.matches? #"^\-[0-9]" x)))
               (let [flag (Pattern.substitute #"^\-\-?" x "" 1)
-                    splt (split-by &flag &[\=])
-                    k (if (> (length &splt) 1) (unsafe-nth &splt 0) &flag)
-                    v (cond
-                      (> (length &splt) 1) (nth &splt 1)
-                      (< i (Int.dec (Array.length args)))
-                        (do
-                          (set! i (Int.inc i))
-                          (Maybe.Just @(Array.unsafe-nth args i)))
-                      (Maybe.Nothing))]
+                    eq (split-at-eq &flag)
+                    k (match-ref &eq
+                      (Maybe.Just p) @(Pair.a p)
+                      (Maybe.Nothing) @&flag)
+                    v (match-ref &eq
+                      (Maybe.Just p) (Maybe.Just @(Pair.b p))
+                      (Maybe.Nothing)
+                        (if (< i (Int.dec (Array.length args)))
+                          (do
+                            (set! i (Int.inc i))
+                            (Maybe.Just @(Array.unsafe-nth args i)))
+                          (Maybe.Nothing)))]
                 (cond
-                  (CmdMap.contains? &values k)
-                    (if (CmdMap.type? &values k &(Tag.TBoolean))
+                  (CmdMap.contains? &values &k)
+                    (if (CmdMap.type? &values &k &(Tag.TBoolean))
                       (do
-                        ; give back the token the space-separated form (splt <= 1)
-                        ; speculatively consumed; the `=` form consumed nothing, so
-                        ; decrementing there would re-read the same token forever.
-                        (when (and (Maybe.just? &v) (<= (length &splt) 1))
+                        ; give back the token the space-separated form
+                        ; speculatively consumed; the `=` form consumed nothing,
+                        ; so decrementing there would loop on the same token
+                        (when (and (Maybe.just? &v) (Maybe.nothing? &eq))
                           (set! i (Int.dec i)))
                         (CmdMap.put! &values
-                                     k
-                                     (if (> (length &splt) 1)
-                                       (unsafe-nth &splt 1)
-                                       "true")))
+                                     &k
+                                     (match-ref &eq
+                                       (Maybe.Just p) (Pair.b p)
+                                       (Maybe.Nothing) "true")))
                       (match v
-                        (Maybe.Just val) (CmdMap.put! &values k &val)
+                        (Maybe.Just val) (CmdMap.put! &values &k &val)
                         (Maybe.Nothing)
                           (do
                             (set! res
                                   (Result.Error (fmt "No value for: %s" &flag)))
                             (break))))
-                  (or (= k "help") (= k "h"))
+                  (or (= &k "help") (= &k "h"))
                     (do (set! res (Result.Error @"")) (break))
-                  (and (<= (length &splt) 1)
-                       (not (empty? k))
+                  (and (Maybe.nothing? &eq)
+                       (not (empty? &k))
                        (not (starts-with? x "--")))
-                    (let [n (String.length k)
-                          stop (bundle-stop &values k)
+                    (let [n (String.length &k)
+                          stop (bundle-stop &values &k)
                           c (if (< stop n)
-                            (String.byte-slice k stop (Int.inc stop))
+                            (String.byte-slice &k stop (Int.inc stop))
                             @"")
                           rest (if (< stop n)
-                            (String.byte-slice k (Int.inc stop) n)
+                            (String.byte-slice &k (Int.inc stop) n)
                             @"")
                           known (or (= stop n) (CmdMap.short? &values &c))]
                       (cond
@@ -482,7 +499,7 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                         (do
                           (for [j 0 stop]
                             (CmdMap.put! &values
-                                         &(String.byte-slice k j (Int.inc j))
+                                         &(String.byte-slice &k j (Int.inc j))
                                          "true"))
                           (cond
                             (= stop n)
@@ -579,8 +596,12 @@ positional argument name) to its value; unset values are absent from the map.
 Non-flag tokens fill positional arguments in the order they were added, and
 flags and positionals can be interleaved freely. A bare `--` ends option
 parsing — every following token becomes a positional even if it starts with `-`
-— and a token shaped like a negative number (`-5`, `-3.14`) is a positional, not
-an unknown option.
+— and a token shaped like a negative number (`-5`, `-3.14`), or a lone `-`
+(conventionally standard input), is a positional, not an unknown option.
+
+An option can carry its value in the same token, as `--name=value` or
+`-n=value`; only the first `=` separates them, so `--define=x=1` sets `define`
+to `x=1`.
 
 A single-dash token that matches no option exactly is decomposed into
 single-character short options, so `-av` is `-a -v`. Booleans continue the

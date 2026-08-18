@@ -35,6 +35,11 @@
       (CLI.add &(CLI.bool "hat" "t" "wear a hat"))
       (CLI.add &(CLI.str "thing" "th" "a thing" false))))
 
+; a gcc-like parser the `=`-form tests below drive
+
+(def define-parser
+  (=> (CLI.new @"defines") (CLI.add &(CLI.str "define" "D" "a define" false))))
+
 (def strict-parser
   (=> (CLI.new @"strict")
       (CLI.add &(CLI.bool "all" "a" "list all"))
@@ -629,6 +634,36 @@
       (Result.Error _)
         (assert-true test false "boolean --flag=true unexpectedly errored")))
 
+  ; only the first `=` separates an option from its value
+
+  (let-do [res (flat-parse &define-parser &[@"--define=x=1"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "x=1"
+          &(CLI.Type.str &(Map.get &m "define"))
+          "--define=x=1 keeps everything after the first =")
+      (Result.Error _)
+        (assert-true test false "--define=x=1 unexpectedly errored")))
+
+  (let-do [res (flat-parse &define-parser &[@"-D=x=1"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "x=1"
+          &(CLI.Type.str &(Map.get &m "define"))
+          "-D=x=1 keeps everything after the first =")
+      (Result.Error _) (assert-true test false "-D=x=1 unexpectedly errored")))
+
+  (let-do [res (flat-parse &define-parser &[@"--define="])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          ""
+          &(CLI.Type.str &(Map.get &m "define"))
+          "--define= sets an empty value")
+      (Result.Error _) (assert-true test false "--define= unexpectedly errored")))
+
   ; regression: a bare boolean that is not the last token must not swallow the
   ; following token (the same inverted guard dropped it)
   (let-do [p (=> (CLI.new @"flat")
@@ -882,10 +917,37 @@
           "a double-dashed token is not decomposed")
       (Result.Success _) (assert-true test false "--av should have errored")))
 
+  ; a lone - is an operand, not an option
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "file" "a file" true)))
+           res (flat-parse &p &[@"-"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-"
+          &(CLI.Type.str &(Map.get &m "file"))
+          "a bare - fills a positional")
+      (Result.Error _) (assert-true test false "a bare - unexpectedly errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-str "file" "a file" true)))
+           res (flat-parse &p &[@"--" @"-"])]
+    (match res
+      (Result.Success m)
+        (assert-equal test
+          "-"
+          &(CLI.Type.str &(Map.get &m "file"))
+          "a bare - after -- fills a positional")
+      (Result.Error _) (assert-true test false "-- then - unexpectedly errored")))
+
   (let-do [res (flat-parse &bundling-parser &[@"-"])]
     (match res
       (Result.Error e)
-        (assert-equal test "Unknown option: -" &e "a bare - is still unknown")
+        (assert-equal test
+          "Unexpected argument: -"
+          &e
+          "a bare - with no positional left is an unexpected argument")
       (Result.Success _) (assert-true test false "- should have errored")))
 
   (let-do [p (=> (CLI.new @"flat")

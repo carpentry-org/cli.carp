@@ -429,8 +429,11 @@ positional argument name) to its value; unset values are absent from the map.
 Non-flag tokens fill positional arguments in the order they were added, and
 flags and positionals can be interleaved freely. A bare <code>--</code> ends option
 parsing — every following token becomes a positional even if it starts with <code>-</code>
-— and a token shaped like a negative number (<code>-5</code>, <code>-3.14</code>) is a positional, not
-an unknown option.</p>
+— and a token shaped like a negative number (<code>-5</code>, <code>-3.14</code>), or a lone <code>-</code>
+(conventionally standard input), is a positional, not an unknown option.</p>
+<p>An option can carry its value in the same token, as <code>--name=value</code> or
+<code>-n=value</code>; only the first <code>=</code> separates them, so <code>--define=x=1</code> sets <code>define</code>
+to <code>x=1</code>.</p>
 <p>A single-dash token that matches no option exactly is decomposed into
 single-character short options, so <code>-av</code> is <code>-a -v</code>. Booleans continue the
 bundle; the first option that takes a value ends it and reads the rest of the
