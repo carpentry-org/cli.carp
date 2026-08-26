@@ -112,7 +112,7 @@
     (implements = CLI.Tag.=))
 
   (doc Option "is the option type. To construct an `Option`, please use
-[`int`](#int), [`float`](#float), or [`str`](#str).")
+[`int`](CLI.html#int), [`float`](CLI.html#float), or [`str`](CLI.html#str).")
   (deftype Option
     [type- CLI.Tag
      long String
@@ -123,8 +123,8 @@
      options (Maybe (Array CLI.Type))])
 
   (doc Positional "is the positional argument type. To construct a `Positional`,
-please use [`pos-str`](#pos-str), [`pos-int`](#pos-int), or
-[`pos-float`](#pos-float).")
+please use [`pos-str`](CLI.html#pos-str), [`pos-int`](CLI.html#pos-int), or
+[`pos-float`](CLI.html#pos-float).")
   (deftype Positional
     [type- CLI.Tag
      name String
@@ -132,7 +132,7 @@ please use [`pos-str`](#pos-str), [`pos-int`](#pos-int), or
      required? Bool])
 
   (doc Parser "is the parser type. To construct a `Parser`, please use
-[`new`](#new).")
+[`new`](CLI.html#new).")
   (deftype Parser
     [description String
      options (Array CLI.Option)
@@ -616,16 +616,16 @@ want the built-in help behaviour.")
   (defn parse [p] (parse-from p &(args-rest)))
 
   (doc Dispatch
-    "is what dispatching an [`App`](#app) yields. It answers not just
+    "is what dispatching an [`App`](CLI.html#App) yields. It answers not just
 whether parsing succeeded, but whether help was requested and *for what*, so a
 caller can show the right usage:
 
 - `Parsed` — success. Holds a `Pair` of the chosen subcommand name and its
 parsed value `Map`.
 - `AppHelp` — top-level `--help`/`-h` was given before any subcommand; respond
-with [`App.usage`](#appusage).
+with [`App.usage`](CLI.App.html#usage).
 - `CommandHelp` — a subcommand’s own `--help`/`-h` was given; carries that
-subcommand’s name, so respond with [`App.usage-for`](#appusage-for).
+subcommand’s name, so respond with [`App.usage-for`](CLI.App.html#usage-for).
 - `Failure` — carries a human-readable error message (a missing, unknown, or
 option-shaped leading token, or the subcommand’s own parse error).")
   (deftype Dispatch
@@ -635,10 +635,11 @@ option-shaped leading token, or the subcommand’s own parse error).")
     (Failure [String]))
 
   (doc App "bundles a program description with a set of named subcommands, each
-its own [`Parser`](#parser) — the shape of a tool like `git` or `docker`, where
-`git commit` and `git push` are independent parsers with their own options and
-positionals. Build one with [`App.new`](#appnew) and [`App.add`](#appadd), then
-dispatch with [`App.parse`](#appparse). Adding subcommands is purely additive: a
+its own [`Parser`](CLI.html#Parser) — the shape of a tool like `git` or
+`docker`, where `git commit` and `git push` are independent parsers with
+their own options and positionals. Build one with [`App.new`](CLI.App.html#new)
+and [`App.add`](CLI.App.html#add), then dispatch with
+[`App.parse`](CLI.App.html#parse). Adding subcommands is purely additive: a
 plain `Parser` still works exactly as before.")
   (deftype App
     [description String
@@ -671,15 +672,16 @@ subcommands yet.")
     (defn has? [app name] (not (< (index-of app name) 0)))
 
     (doc parse-from "dispatches the argument array `args` to one of the
-subcommands of the `App` `app`, returning a [`Dispatch`](#dispatch).
+subcommands of the `App` `app`, returning a [`Dispatch`](CLI.html#Dispatch).
 
 The first token selects the subcommand and the remaining tokens are parsed by
-that subcommand’s [`Parser`](#parser). A leading `--help`/`-h` (before any
-subcommand) yields `AppHelp`; any *other* leading option is a `Failure` —
-options come after the subcommand, not before it. A recognized subcommand
-yields `Parsed` on success, `CommandHelp` (carrying the subcommand name) if that
-subcommand’s own `--help`/`-h` was requested, or a `Failure` with its parse
-error otherwise. A missing or unknown subcommand is a `Failure`.")
+that subcommand’s [`Parser`](CLI.html#Parser). A leading `--help`/`-h`
+(before any subcommand) yields `AppHelp`; any *other* leading option is a
+`Failure` — options come after the subcommand, not before it. A recognized
+subcommand yields `Parsed` on success, `CommandHelp` (carrying the subcommand
+name) if that subcommand’s own `--help`/`-h` was requested, or a `Failure`
+with its parse error otherwise. A missing or unknown subcommand is a
+`Failure`.")
     (defn parse-from [app args]
       (if (= 0 (length args))
         (Dispatch.Failure @"No subcommand given.")
@@ -701,7 +703,7 @@ error otherwise. A missing or unknown subcommand is a `Failure`.")
                         (Dispatch.Failure e))))))))))
 
     (doc parse "dispatches the process arguments to one of the subcommands of
-the `App` `app`. See [`parse-from`](#appparse-from) for the result shape.")
+the `App` `app`. See [`parse-from`](#parse-from) for the result shape.")
     (defn parse [app] (parse-from app &(CLI.args-rest)))
 
     (doc usage "prints the available subcommands of the `App` `app` with their
@@ -1124,7 +1126,7 @@ installed for the program called `prog`.
 The first word completes to the registered subcommand names (plus
 `--help`/`-h`); after a subcommand has been given, completion continues with
 that subcommand’s own flags and declared value sets, exactly as
-[`bash`](#bash) does for a single `Parser`.
+[`bash`](CLI.Completion.html#bash) does for a single `Parser`.
 
 The script uses `mapfile`, so it needs bash 4 or newer.")
       (defn bash [app prog]
@@ -1173,7 +1175,7 @@ installed for the program called `prog`.
 The first word completes to the registered subcommand names, each shown with
 its parser’s description; after a subcommand has been given, completion
 continues with that subcommand’s own flags and declared value sets, exactly as
-[`zsh`](#zsh) does for a single `Parser`.")
+[`zsh`](CLI.Completion.html#zsh) does for a single `Parser`.")
       (defn zsh [app prog]
         (let-do [f (fmt "_%s" &(ident prog))
                  descrs []
@@ -1235,7 +1237,7 @@ installed for the program called `prog`.
 The first word completes to the registered subcommand names, each shown with
 its parser’s description, and to nothing else; once a subcommand has been
 given, that subcommand’s own flags and declared value sets complete, exactly as
-[`fish`](#fish) does for a single `Parser`.")
+[`fish`](CLI.Completion.html#fish) does for a single `Parser`.")
       (defn fish [app prog]
         (let-do [out []
                  cmds (commands-of app)
@@ -1276,8 +1278,8 @@ given, that subcommand’s own flags and declared value sets complete, exactly a
             &(CLI.Completion.nl))))))
 
   (doc Completion "generates shell completion scripts from the same
-[`Parser`](#parser) or [`App`](#app) that does the parsing, so the completions
-cannot drift from the flags the program actually accepts.
+[`Parser`](CLI.html#Parser) or [`App`](CLI.html#App) that does the parsing, so
+the completions cannot drift from the flags the program actually accepts.
 
 ```clojure
 (IO.println &(CLI.Completion.bash &p \"mytool\"))
@@ -1285,8 +1287,8 @@ cannot drift from the flags the program actually accepts.
 ```
 
 `bash`, `zsh` and `fish` are supported, for a `Parser` and — under
-[`Completion.App`](#completionapp) — for an `App`. Descriptions, flag names and
-declared value sets are quoted and escaped for the target shell, so a
+[`Completion.App`](CLI.Completion.App.html) — for an `App`. Descriptions, flag
+names and declared value sets are quoted and escaped for the target shell, so a
 description containing quotes, backslashes or dollar signs cannot break (or
 escape from) the generated script."))
 

@@ -142,10 +142,11 @@ not in the map if they are unset.</p>
                     </span>
                     <p class="doc">
                         <p>bundles a program description with a set of named subcommands, each
-its own <a href="#parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or <code>docker</code>, where
-<code>git commit</code> and <code>git push</code> are independent parsers with their own options and
-positionals. Build one with <a href="#appnew"><code>App.new</code></a> and <a href="#appadd"><code>App.add</code></a>, then
-dispatch with <a href="#appparse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
+its own <a href="CLI.html#Parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or
+<code>docker</code>, where <code>git commit</code> and <code>git push</code> are independent parsers with
+their own options and positionals. Build one with <a href="CLI.App.html#new"><code>App.new</code></a>
+and <a href="CLI.App.html#add"><code>App.add</code></a>, then dispatch with
+<a href="CLI.App.html#parse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
 plain <code>Parser</code> still works exactly as before.</p>
 
                     </p>
@@ -169,14 +170,14 @@ plain <code>Parser</code> still works exactly as before.</p>
                     </span>
                     <p class="doc">
                         <p>generates shell completion scripts from the same
-<a href="#parser"><code>Parser</code></a> or <a href="#app"><code>App</code></a> that does the parsing, so the completions
-cannot drift from the flags the program actually accepts.</p>
+<a href="CLI.html#Parser"><code>Parser</code></a> or <a href="CLI.html#App"><code>App</code></a> that does the parsing, so
+the completions cannot drift from the flags the program actually accepts.</p>
 <pre><code class="language-clojure">(IO.println &amp;(CLI.Completion.bash &amp;p &quot;mytool&quot;))
 (IO.println &amp;(CLI.Completion.App.zsh &amp;app &quot;mytool&quot;))
 </code></pre>
 <p><code>bash</code>, <code>zsh</code> and <code>fish</code> are supported, for a <code>Parser</code> and — under
-<a href="#completionapp"><code>Completion.App</code></a> — for an <code>App</code>. Descriptions, flag names and
-declared value sets are quoted and escaped for the target shell, so a
+<a href="CLI.Completion.App.html"><code>Completion.App</code></a> — for an <code>App</code>. Descriptions, flag
+names and declared value sets are quoted and escaped for the target shell, so a
 description containing quotes, backslashes or dollar signs cannot break (or
 escape from) the generated script.</p>
 
@@ -200,16 +201,16 @@ escape from) the generated script.</p>
                         
                     </span>
                     <p class="doc">
-                        <p>is what dispatching an <a href="#app"><code>App</code></a> yields. It answers not just
+                        <p>is what dispatching an <a href="CLI.html#App"><code>App</code></a> yields. It answers not just
 whether parsing succeeded, but whether help was requested and <em>for what</em>, so a
 caller can show the right usage:</p>
 <ul>
 <li><code>Parsed</code> — success. Holds a <code>Pair</code> of the chosen subcommand name and its
 parsed value <code>Map</code>.</li>
 <li><code>AppHelp</code> — top-level <code>--help</code>/<code>-h</code> was given before any subcommand; respond
-with <a href="#appusage"><code>App.usage</code></a>.</li>
+with <a href="CLI.App.html#usage"><code>App.usage</code></a>.</li>
 <li><code>CommandHelp</code> — a subcommand’s own <code>--help</code>/<code>-h</code> was given; carries that
-subcommand’s name, so respond with <a href="#appusage-for"><code>App.usage-for</code></a>.</li>
+subcommand’s name, so respond with <a href="CLI.App.html#usage-for"><code>App.usage-for</code></a>.</li>
 <li><code>Failure</code> — carries a human-readable error message (a missing, unknown, or
 option-shaped leading token, or the subcommand’s own parse error).</li>
 </ul>
@@ -235,7 +236,7 @@ option-shaped leading token, or the subcommand’s own parse error).</li>
                     </span>
                     <p class="doc">
                         <p>is the option type. To construct an <code>Option</code>, please use
-<a href="#int"><code>int</code></a>, <a href="#float"><code>float</code></a>, or <a href="#str"><code>str</code></a>.</p>
+<a href="CLI.html#int"><code>int</code></a>, <a href="CLI.html#float"><code>float</code></a>, or <a href="CLI.html#str"><code>str</code></a>.</p>
 
                     </p>
                 </div>
@@ -258,7 +259,7 @@ option-shaped leading token, or the subcommand’s own parse error).</li>
                     </span>
                     <p class="doc">
                         <p>is the parser type. To construct a <code>Parser</code>, please use
-<a href="#new"><code>new</code></a>.</p>
+<a href="CLI.html#new"><code>new</code></a>.</p>
 
                     </p>
                 </div>
@@ -281,8 +282,8 @@ option-shaped leading token, or the subcommand’s own parse error).</li>
                     </span>
                     <p class="doc">
                         <p>is the positional argument type. To construct a <code>Positional</code>,
-please use <a href="#pos-str"><code>pos-str</code></a>, <a href="#pos-int"><code>pos-int</code></a>, or
-<a href="#pos-float"><code>pos-float</code></a>.</p>
+please use <a href="CLI.html#pos-str"><code>pos-str</code></a>, <a href="CLI.html#pos-int"><code>pos-int</code></a>, or
+<a href="CLI.html#pos-float"><code>pos-float</code></a>.</p>
 
                     </p>
                 </div>

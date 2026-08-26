@@ -78,10 +78,11 @@
                 </h1>
                 <div class="module-description">
                     <p>bundles a program description with a set of named subcommands, each
-its own <a href="#parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or <code>docker</code>, where
-<code>git commit</code> and <code>git push</code> are independent parsers with their own options and
-positionals. Build one with <a href="#appnew"><code>App.new</code></a> and <a href="#appadd"><code>App.add</code></a>, then
-dispatch with <a href="#appparse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
+its own <a href="CLI.html#Parser"><code>Parser</code></a> — the shape of a tool like <code>git</code> or
+<code>docker</code>, where <code>git commit</code> and <code>git push</code> are independent parsers with
+their own options and positionals. Build one with <a href="CLI.App.html#new"><code>App.new</code></a>
+and <a href="CLI.App.html#add"><code>App.add</code></a>, then dispatch with
+<a href="CLI.App.html#parse"><code>App.parse</code></a>. Adding subcommands is purely additive: a
 plain <code>Parser</code> still works exactly as before.</p>
 
                 </div>
@@ -265,7 +266,7 @@ subcommands yet.</p>
                     </pre>
                     <p class="doc">
                         <p>dispatches the process arguments to one of the subcommands of
-the <code>App</code> <code>app</code>. See <a href="#appparse-from"><code>parse-from</code></a> for the result shape.</p>
+the <code>App</code> <code>app</code>. See <a href="#parse-from"><code>parse-from</code></a> for the result shape.</p>
 
                     </p>
                 </div>
@@ -286,14 +287,15 @@ the <code>App</code> <code>app</code>. See <a href="#appparse-from"><code>parse-
                     </pre>
                     <p class="doc">
                         <p>dispatches the argument array <code>args</code> to one of the
-subcommands of the <code>App</code> <code>app</code>, returning a <a href="#dispatch"><code>Dispatch</code></a>.</p>
+subcommands of the <code>App</code> <code>app</code>, returning a <a href="CLI.html#Dispatch"><code>Dispatch</code></a>.</p>
 <p>The first token selects the subcommand and the remaining tokens are parsed by
-that subcommand’s <a href="#parser"><code>Parser</code></a>. A leading <code>--help</code>/<code>-h</code> (before any
-subcommand) yields <code>AppHelp</code>; any <em>other</em> leading option is a <code>Failure</code> —
-options come after the subcommand, not before it. A recognized subcommand
-yields <code>Parsed</code> on success, <code>CommandHelp</code> (carrying the subcommand name) if that
-subcommand’s own <code>--help</code>/<code>-h</code> was requested, or a <code>Failure</code> with its parse
-error otherwise. A missing or unknown subcommand is a <code>Failure</code>.</p>
+that subcommand’s <a href="CLI.html#Parser"><code>Parser</code></a>. A leading <code>--help</code>/<code>-h</code>
+(before any subcommand) yields <code>AppHelp</code>; any <em>other</em> leading option is a
+<code>Failure</code> — options come after the subcommand, not before it. A recognized
+subcommand yields <code>Parsed</code> on success, <code>CommandHelp</code> (carrying the subcommand
+name) if that subcommand’s own <code>--help</code>/<code>-h</code> was requested, or a <code>Failure</code>
+with its parse error otherwise. A missing or unknown subcommand is a
+<code>Failure</code>.</p>
 
                     </p>
                 </div>

@@ -77,16 +77,16 @@
                     CLI.Dispatch
                 </h1>
                 <div class="module-description">
-                    <p>is what dispatching an <a href="#app"><code>App</code></a> yields. It answers not just
+                    <p>is what dispatching an <a href="CLI.html#App"><code>App</code></a> yields. It answers not just
 whether parsing succeeded, but whether help was requested and <em>for what</em>, so a
 caller can show the right usage:</p>
 <ul>
 <li><code>Parsed</code> — success. Holds a <code>Pair</code> of the chosen subcommand name and its
 parsed value <code>Map</code>.</li>
 <li><code>AppHelp</code> — top-level <code>--help</code>/<code>-h</code> was given before any subcommand; respond
-with <a href="#appusage"><code>App.usage</code></a>.</li>
+with <a href="CLI.App.html#usage"><code>App.usage</code></a>.</li>
 <li><code>CommandHelp</code> — a subcommand’s own <code>--help</code>/<code>-h</code> was given; carries that
-subcommand’s name, so respond with <a href="#appusage-for"><code>App.usage-for</code></a>.</li>
+subcommand’s name, so respond with <a href="CLI.App.html#usage-for"><code>App.usage-for</code></a>.</li>
 <li><code>Failure</code> — carries a human-readable error message (a missing, unknown, or
 option-shaped leading token, or the subcommand’s own parse error).</li>
 </ul>
