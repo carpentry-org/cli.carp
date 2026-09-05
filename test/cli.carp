@@ -254,32 +254,32 @@
 
   (assert-equal test "none" &(CLI.Type.str &(CLI.Type.None)) "Type.str none")
 
-  ; --- Type.format ---
+  ; --- Type.unsafe-format ---
 
   (assert-equal test
     "42"
-    &(CLI.Type.format "%lld" &(CLI.Type.Integer 42l))
-    "Type.format integer")
+    &(CLI.Type.unsafe-format "%lld" &(CLI.Type.Integer 42l))
+    "Type.unsafe-format integer")
 
   (assert-equal test
     "3.140000"
-    &(CLI.Type.format "%f" &(CLI.Type.Floating 3.14))
-    "Type.format float")
+    &(CLI.Type.unsafe-format "%f" &(CLI.Type.Floating 3.14))
+    "Type.unsafe-format float")
 
   (assert-equal test
     "hello"
-    &(CLI.Type.format "%s" &(CLI.Type.Str @"hello"))
-    "Type.format string")
+    &(CLI.Type.unsafe-format "%s" &(CLI.Type.Str @"hello"))
+    "Type.unsafe-format string")
 
   (assert-equal test
     "true"
-    &(CLI.Type.format "%s" &(CLI.Type.Boolean true))
-    "Type.format boolean")
+    &(CLI.Type.unsafe-format "%s" &(CLI.Type.Boolean true))
+    "Type.unsafe-format boolean")
 
   (assert-equal test
     "none"
-    &(CLI.Type.format "%s" &(CLI.Type.None))
-    "Type.format none")
+    &(CLI.Type.unsafe-format "%s" &(CLI.Type.None))
+    "Type.unsafe-format none")
 
   ; --- Type.to-* conversions ---
 

@@ -52,21 +52,23 @@
         (Boolean p) (match @b (Boolean q) (= p q) _ false)))
     (implements = CLI.Type.=)
 
-    (defn format [s t]
+    ; `s` is caller-supplied and reaches C’s `printf` unchecked, so this
+    ; implementation carries the interface’s hazard in full.
+    (defn unsafe-format [s t]
       (match @t
-        (Integer i) (Long.format s i)
-        (Floating f) (Double.format s f)
-        (Str s2) (String.format s &s2)
-        (Boolean b) (String.format s (if b "true" "false"))
-        (None) (String.format s "none")))
-    (implements format CLI.Type.format)
+        (Integer i) (Long.unsafe-format s i)
+        (Floating f) (Double.unsafe-format s f)
+        (Str s2) (String.unsafe-format s &s2)
+        (Boolean b) (String.unsafe-format s (if b "true" "false"))
+        (None) (String.unsafe-format s "none")))
+    (implements unsafe-format CLI.Type.unsafe-format)
 
     ; qualified X.str calls conflict with the CLI.str macro in the VM-era
-    ; compiler, so these use format instead
+    ; compiler, so these use unsafe-format instead
     (defn str [t]
       (match @t
-        (Type.Integer i) (Long.format "%lld" i)
-        (Type.Floating f) (Double.format "%g" f)
+        (Type.Integer i) (Long.unsafe-format "%lld" i)
+        (Type.Floating f) (Double.unsafe-format "%g" f)
         (Type.Str s) s
         (Type.Boolean b) (if b @"true" @"false")
         (Type.None) @"none"))
@@ -360,7 +362,8 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
           (match @(Option.default arg)
             (Maybe.Just default-val)
               (IO.print
-                &(fmt " (default: %s)" &(CLI.Type.format "%s" &default-val)))
+                &(fmt " (default: %s)"
+                      &(CLI.Type.unsafe-format "%s" &default-val)))
             (Maybe.Nothing) ())
           (match @(Option.options arg)
             (Maybe.Just o)
