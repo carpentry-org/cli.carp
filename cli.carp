@@ -361,15 +361,12 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
           (when @(Option.required? arg) (IO.print " REQUIRED"))
           (match @(Option.default arg)
             (Maybe.Just default-val)
-              (IO.print
-                &(fmt " (default: %s)"
-                      &(CLI.Type.unsafe-format "%s" &default-val)))
+              (IO.print &(fmt " (default: %s)" &(Type.str &default-val)))
             (Maybe.Nothing) ())
           (match @(Option.options arg)
             (Maybe.Just o)
               (IO.print
-                &(fmt " (options: %s)"
-                      &(join ", " &(copy-map &(fn [v] (fmt "%s" v)) &o))))
+                &(fmt " (options: %s)" &(join ", " &(copy-map &Type.str &o))))
             (Maybe.Nothing) ())
           (IO.println ""))) (IO.println
         "  --help|-h: print this help message and exit.") (when-do (> (length (Parser.positionals p))
@@ -550,9 +547,8 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                               (fmt
                                 "Option %s received an invalid option %s (Options are %s)"
                                 (Option.long o)
-                                &(CmdMap.get &values (Option.long o))
-                                &(join ", "
-                                       &(copy-map &(fn [v] (fmt "%s" v)) &opts)))))
+                                &(Type.str &(CmdMap.get &values (Option.long o)))
+                                &(join ", " &(copy-map &Type.str &opts)))))
                       (break))
                   (Maybe.Nothing) ())
               ()))))
@@ -744,7 +740,7 @@ the `App` `app`, or an error if there is no such subcommand.")
   (hidden option-value-strings)
   (defn option-value-strings [o]
     (match @(Option.options o)
-      (Maybe.Just vs) (copy-map &(fn [v] (fmt "%s" v)) &vs)
+      (Maybe.Just vs) (copy-map &Type.str &vs)
       (Maybe.Nothing) []))
 
   (defmodule Completion

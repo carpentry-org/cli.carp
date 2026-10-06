@@ -46,6 +46,11 @@
       (CLI.add &(CLI.str "mode" "m" "a mode" true))
       (CLI.add &(CLI.str "kind" "k" "a kind" false @"x" &[@"x" @"y"]))))
 
+(def numeric-parser
+  (=> (CLI.new @"numbers")
+      (CLI.add &(CLI.int "port" "p" "the port" false 8080l &[80l 8080l]))
+      (CLI.add &(CLI.float "rate" "r" "the rate" false 1.5 &[0.5 1.5]))))
+
 ; `CLI.parse-from` is internal, so the flat-parser regression tests below reach
 ; it through a one-subcommand `App`: prepend a dummy subcommand name, dispatch,
 ; and collapse the `Dispatch` back to the `Result` shape those assertions expect.
@@ -165,6 +170,12 @@
 (defn glob-fish [] (CLI.Completion.fish &glob-parser "tool"))
 
 (defn spaced-app-fish [] (CLI.Completion.App.fish &spaced-app "tool"))
+
+(defn numeric-bash [] (CLI.Completion.bash &numeric-parser "tool"))
+
+(defn numeric-zsh [] (CLI.Completion.zsh &numeric-parser "tool"))
+
+(defn numeric-fish [] (CLI.Completion.fish &numeric-parser "tool"))
 
 ; ---------------------------------------------------------------------------
 ; Type tests
@@ -1479,4 +1490,58 @@
   (assert-true test
     (has? &(spaced-app-fish)
           "-n '__fish_seen_subcommand_from run\\\\ it' -l 'mode'")
-    "and is one argument to the condition that gates its own flags"))
+    "and is one argument to the condition that gates its own flags")
+
+  ; ---------------------------------------------------------------------------
+  ; Integer and floating point values
+  ; ---------------------------------------------------------------------------
+
+  (do
+    (CLI.usage &numeric-parser)
+    (assert-true test
+      true
+      "usage prints integer and floating point defaults and options without crashing"))
+
+  (let-do [res (flat-parse &numeric-parser &[@"--port" @"81"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Option port received an invalid option 81 (Options are 80, 8080)"
+          &e
+          "an invalid integer value is reported with the allowed values")
+      (Result.Success _)
+        (assert-true test false "--port 81 should have errored")))
+
+  (let-do [res (flat-parse &numeric-parser &[@"--rate" @"2.5"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Option rate received an invalid option 2.5 (Options are 0.5, 1.5)"
+          &e
+          "an invalid floating point value is reported with the allowed values")
+      (Result.Success _)
+        (assert-true test false "--rate 2.5 should have errored")))
+
+  (assert-true test
+    (has? &(numeric-bash) "local vals=('80' '8080')")
+    "bash completes declared integer values")
+
+  (assert-true test
+    (has? &(numeric-bash) "local vals=('0.5' '1.5')")
+    "bash completes declared floating point values")
+
+  (assert-true test
+    (has? &(numeric-zsh) "'--port[the port]:value:(80 8080)'")
+    "zsh completes declared integer values")
+
+  (assert-true test
+    (has? &(numeric-zsh) "'--rate[the rate]:value:(0.5 1.5)'")
+    "zsh completes declared floating point values")
+
+  (assert-true test
+    (has? &(numeric-fish) "-l 'port' -s 'p' -d 'the port' -x -a '80 8080'")
+    "fish completes declared integer values")
+
+  (assert-true test
+    (has? &(numeric-fish) "-l 'rate' -s 'r' -d 'the rate' -x -a '0.5 1.5'")
+    "fish completes declared floating point values"))
