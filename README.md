@@ -41,6 +41,9 @@ You’ll have to set a default if you want to specify options, although you can
 set it to `(Maybe.Nothing)` if you want to make sure that it has to be set
 manually.
 
+A value that doesn’t parse as a number, such as `--port http`, is an error for
+an integer or floating point option or positional.
+
 Booleans neither take defaults nor options. If a boolean flag receives a value,
 it will be read as true unless it’s the string `false`.
 

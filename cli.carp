@@ -100,10 +100,16 @@
   (defmodule Tag
     (defn to-type [t s]
       (match t
-        (TInteger) (CLI.Type.Integer (Maybe.from (Long.from-string s) 0l))
-        (TFloating) (CLI.Type.Floating (Maybe.from (Double.from-string s) 0.0))
-        (TStr) (CLI.Type.Str @s)
-        (TBoolean) (CLI.Type.Boolean (/= s "false"))))
+        (TInteger)
+          (if (empty? s)
+            (Maybe.Nothing)
+            (Maybe.apply (Long.from-string s) &CLI.Type.Integer))
+        (TFloating)
+          (if (empty? s)
+            (Maybe.Nothing)
+            (Maybe.apply (Double.from-string s) &CLI.Type.Floating))
+        (TStr) (Maybe.Just (CLI.Type.Str @s))
+        (TBoolean) (Maybe.Just (CLI.Type.Boolean (/= s "false")))))
 
     (defn = [a b]
       (match @a
@@ -237,14 +243,18 @@ please use [`pos-str`](CLI.html#pos-str), [`pos-int`](CLI.html#pos-int), or
         found))
 
     (defn put! [m s v]
-      (let [vs (values m)]
+      (let-do [ok true
+               vs (values m)]
         (for [i 0 (length vs)]
           (let [p (unsafe-nth vs i)
                 k (Pair.a p)
                 vp (Pair.b p)]
             (when-do (or (= (Pair.a k) s) (= (Pair.b k) s))
-              (Pair.set-b! vp (Maybe.Just (CLI.Tag.to-type @(Pair.a vp) v)))
-              (break))))))
+              (match (CLI.Tag.to-type @(Pair.a vp) v)
+                (Maybe.Just t) (Pair.set-b! vp (Maybe.Just t))
+                (Maybe.Nothing) (set! ok false))
+              (break))))
+        ok))
 
     (defn to-map [m]
       (let-do [result (the (Map String CLI.Type) {})
@@ -412,6 +422,10 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
             (break))))
       stop))
 
+  (private invalid-value)
+  (hidden invalid-value)
+  (defn invalid-value [name v] (fmt "Invalid value for %s: %s" name v))
+
   (hidden parse-from)
   ; the workhorse behind `parse` and `App` dispatch: parses an explicit argument
   ; array against `p`. Non-flag tokens fill positionals in order; flags and
@@ -462,13 +476,17 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                         ; so decrementing there would loop on the same token
                         (when (and (Maybe.just? &v) (Maybe.nothing? &eq))
                           (set! i (Int.dec i)))
-                        (CmdMap.put! &values
-                                     &k
-                                     (match-ref &eq
-                                       (Maybe.Just p) (Pair.b p)
-                                       (Maybe.Nothing) "true")))
-                      (match v
-                        (Maybe.Just val) (CmdMap.put! &values &k &val)
+                        (ignore
+                          (CmdMap.put! &values
+                                       &k
+                                       (match-ref &eq
+                                         (Maybe.Just p) (Pair.b p)
+                                         (Maybe.Nothing) "true"))))
+                      (match-ref &v
+                        (Maybe.Just val)
+                          (unless-do (CmdMap.put! &values &k val)
+                            (set! res (Result.Error (invalid-value &k val)))
+                            (break))
                         (Maybe.Nothing)
                           (do
                             (set! res
@@ -498,18 +516,24 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                             (break))
                         (do
                           (for [j 0 stop]
-                            (CmdMap.put! &values
-                                         &(String.byte-slice &k j (Int.inc j))
-                                         "true"))
+                            (let [b (String.byte-slice &k j (Int.inc j))]
+                              (ignore (CmdMap.put! &values &b "true"))))
                           (cond
                             (= stop n)
                               (when (Maybe.just? &v) (set! i (Int.dec i)))
                             (not (empty? &rest))
                               (do
                                 (when (Maybe.just? &v) (set! i (Int.dec i)))
-                                (CmdMap.put! &values &c &rest))
-                            (match v
-                              (Maybe.Just val) (CmdMap.put! &values &c &val)
+                                (unless-do (CmdMap.put! &values &c &rest)
+                                  (set! res
+                                        (Result.Error (invalid-value &c &rest)))
+                                  (break)))
+                            (match-ref &v
+                              (Maybe.Just val)
+                                (unless-do (CmdMap.put! &values &c val)
+                                  (set! res
+                                        (Result.Error (invalid-value &c val)))
+                                  (break))
                               (Maybe.Nothing)
                                 (do
                                   (set! res
@@ -520,9 +544,14 @@ Options:" (StaticArray.unsafe-nth &System.args 0) &(options-str p) (Parser.descr
                     (break))))
             (< pos-idx (length positionals))
               (let-do [pos (unsafe-nth positionals pos-idx)]
-                (Array.aset! &pos-results
-                             pos-idx
-                             (Maybe.Just (Tag.to-type @(Positional.type- pos) x)))
+                (match (Tag.to-type @(Positional.type- pos) x)
+                  (Maybe.Just val)
+                    (Array.aset! &pos-results pos-idx (Maybe.Just val))
+                  (Maybe.Nothing)
+                    (do
+                      (set! res
+                            (Result.Error (invalid-value (Positional.name pos) x)))
+                      (break)))
                 (set! pos-idx (Int.inc pos-idx)))
             (do
               (set! res (Result.Error (fmt "Unexpected argument: %s" x)))
