@@ -369,28 +369,38 @@
   ; --- Tag.to-type ---
 
   (assert-equal test
-    "42"
-    &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.TInteger) "42"))
+    &(Maybe.Just (CLI.Type.Integer 42l))
+    &(CLI.Tag.to-type (CLI.Tag.TInteger) "42")
     "Tag.to-type Integer parses")
 
   (assert-equal test
-    "hello"
-    &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.TStr) "hello"))
+    &(Maybe.Nothing)
+    &(CLI.Tag.to-type (CLI.Tag.TInteger) "")
+    "Tag.to-type Integer rejects an empty value")
+
+  (assert-equal test
+    &(Maybe.Nothing)
+    &(CLI.Tag.to-type (CLI.Tag.TFloating) "")
+    "Tag.to-type Floating rejects an empty value")
+
+  (assert-equal test
+    &(Maybe.Just (CLI.Type.Str @"hello"))
+    &(CLI.Tag.to-type (CLI.Tag.TStr) "hello")
     "Tag.to-type Str passes through")
 
   (assert-equal test
-    "true"
-    &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.TBoolean) "true"))
+    &(Maybe.Just (CLI.Type.Boolean true))
+    &(CLI.Tag.to-type (CLI.Tag.TBoolean) "true")
     "Tag.to-type Boolean true")
 
   (assert-equal test
-    "true"
-    &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.TBoolean) "yes"))
+    &(Maybe.Just (CLI.Type.Boolean true))
+    &(CLI.Tag.to-type (CLI.Tag.TBoolean) "yes")
     "Tag.to-type Boolean non-false is true")
 
   (assert-equal test
-    "false"
-    &(CLI.Type.str &(CLI.Tag.to-type (CLI.Tag.TBoolean) "false"))
+    &(Maybe.Just (CLI.Type.Boolean false))
+    &(CLI.Tag.to-type (CLI.Tag.TBoolean) "false")
     "Tag.to-type Boolean false")
 
   ; --- CmdMap ---
@@ -418,14 +428,14 @@
     (let-do [t (assert-false test
                (CLI.CmdMap.set? &m "name")
                "CmdMap.set? returns false when no value set")]
-      (CLI.CmdMap.put! &m "name" "hello")
+      (ignore (CLI.CmdMap.put! &m "name" "hello"))
       (assert-true &t
         (CLI.CmdMap.set? &m "name")
         "CmdMap.set? returns true after put!")))
 
   (let-do [o (CLI.int "count" "c" "a count" false)
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (CLI.CmdMap.put! &m "count" "10")
+    (ignore (CLI.CmdMap.put! &m "count" "10"))
     (assert-equal test
       "10"
       &(CLI.Type.str &(CLI.CmdMap.get &m "count"))
@@ -433,13 +443,13 @@
 
   (let-do [o (CLI.str "mode" "m" "mode" false @"a" &[@"a" @"b"])
            m (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o)]
-    (CLI.CmdMap.put! &m "mode" "a")
+    (ignore (CLI.CmdMap.put! &m "mode" "a"))
     (let-do [t (assert-true test
                (CLI.CmdMap.in? &m
                                "mode"
                                &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
                "CmdMap.in? value in options")]
-      (CLI.CmdMap.put! &m "mode" "x")
+      (ignore (CLI.CmdMap.put! &m "mode" "x"))
       (assert-false &t
         (CLI.CmdMap.in? &m "mode" &[(CLI.Type.Str @"a") (CLI.Type.Str @"b")])
         "CmdMap.in? value not in options")))
@@ -466,7 +476,7 @@
            m (CLI.CmdMap.put-empty
              (CLI.CmdMap.put-empty (CLI.CmdMap.new) &o1)
              &o2)]
-    (CLI.CmdMap.put! &m "flag" "5")
+    (ignore (CLI.CmdMap.put! &m "flag" "5"))
     (let-do [result (CLI.CmdMap.to-map &m)
              t (assert-true test
                (Map.contains? &result "flag")
@@ -1521,6 +1531,66 @@
           "an invalid floating point value is reported with the allowed values")
       (Result.Success _)
         (assert-true test false "--rate 2.5 should have errored")))
+
+  (let-do [res (flat-parse &numeric-parser &[@"--port" @"http"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Invalid value for port: http"
+          &e
+          "an integer option rejects a value that is not a number")
+      (Result.Success _)
+        (assert-true test false "--port http should have errored")))
+
+  (let-do [res (flat-parse &numeric-parser &[@"--port=http"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Invalid value for port: http"
+          &e
+          "an integer option rejects a non-number given with =")
+      (Result.Success _)
+        (assert-true test false "--port=http should have errored")))
+
+  (let-do [res (flat-parse &numeric-parser &[@"--rate" @"fast"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Invalid value for rate: fast"
+          &e
+          "a floating point option rejects a value that is not a number")
+      (Result.Success _)
+        (assert-true test false "--rate fast should have errored")))
+
+  (let-do [res (flat-parse &bundling-parser &[@"-avnabc"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Invalid value for n: abc"
+          &e
+          "a bundle rejects an attached value that is not a number")
+      (Result.Success _) (assert-true test false "-avnabc should have errored")))
+
+  (let-do [p (=> (CLI.new @"flat")
+                 (CLI.add-pos &(CLI.pos-int "n" "a number" true)))
+           res (flat-parse &p &[@"seven"])]
+    (match res
+      (Result.Error e)
+        (assert-equal test
+          "Invalid value for n: seven"
+          &e
+          "an integer positional rejects a value that is not a number")
+      (Result.Success _) (assert-true test false "seven should have errored")))
+
+  (let-do [app (=> (CLI.App.new @"a lister") (CLI.App.add "ls" &bundling-parser))
+           res (CLI.App.parse-from &app &[@"ls" @"-avn" @"five"])]
+    (match res
+      (CLI.Dispatch.Failure e)
+        (assert-equal test
+          "Invalid value for n: five"
+          &e
+          "a subcommand rejects a value that is not a number")
+      _ (assert-true test false "ls -avn five should have failed")))
 
   (assert-true test
     (has? &(numeric-bash) "local vals=('80' '8080')")
